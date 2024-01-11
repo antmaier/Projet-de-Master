@@ -276,8 +276,8 @@ class TranslocationModel(ABC):
                           else self.kinetic_scheme.copy())
         for edge in kinetic_scheme.edges():
             kinetic_scheme.edges[edge]['rate'] = (
-                lambda old_rate_lambda=kinetic_scheme.edges[edge]['rate']: 
-                    old_rate_lambda() / average_velocity)
+                lambda old_rate=kinetic_scheme.edges[edge]['rate']: 
+                    old_rate() / average_velocity)
         return kinetic_scheme
     
     def analytical_attribute_stats(# TODO debug variance (and CI)
@@ -687,7 +687,7 @@ class DiscSpiral(TranslocationModel):
         return kinetic_scheme
 
 
-class DeffectiveSC2R(SC2R1Loop):
+class DefectiveSC2R(SequentialClockwise2ResidueStep):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
     
     Single loop translocation model with one defective protomer. The defective
@@ -695,7 +695,9 @@ class DeffectiveSC2R(SC2R1Loop):
     protomers.
 
     The states are defined by the ADP/ATP-state of the protomer and the 
-    position of the defective protomer. 
+    position of the defective protomer, e.g. DTT(T)TT, 
+    where T means 'ATP-state', D means 'ADP-state', (X) means 'protomer in 
+    X-state is defective'.
     Ignoring the defective protomer, the possible states are:
         - All protomers in ATP-state;
         - All protomers in ATP-state, except the first one in ADP-state;
@@ -709,15 +711,21 @@ class DeffectiveSC2R(SC2R1Loop):
         self.n_protomers = n_protomers
         self.k_h_defective = self.k_h / 10
         self.kinetic_scheme = self._construct_kinetic_scheme()
+    
+    # TODO
+    @property
+    def k_down(self) -> float:
+        """Translocation down rate.
+        
+        It is constrained by the thermodynamics of the kinetic scheme.
+        """
+        pass
 
     def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
     ) -> nx.DiGraph:
         if not kinetic_scheme:
             kinetic_scheme = nx.DiGraph()
-        # T means 'ATP-state', D means 'ADP-state', (X) means 'protomer in 
-        # X-state is defective'
         for i in range(self.n_protomers):
-            
             states = ['T'*self.n_protomers, 
                       'D' + 'T'*(self.n_protomers-1),
                       'T'*(self.n_protomers-1) + 'D']
@@ -727,5 +735,48 @@ class DeffectiveSC2R(SC2R1Loop):
                     state, 
                     probability=lambda: self._compute_probabilities()[state]
                 )
+
+        def add_defective_parenthesis(state: str, i: int) -> str:
+            return state[:i] + '(' + state[i] + ')' + state[i+1:]
+
+        for state in kinetic_scheme.nodes():
+            undefective_state = state.replace('(', '').replace(')', '')
+            defective_index = state.find('(')
+            if undefective_state[0] == 'D':
+                next_state = undefective_state[1:] + 'D'
+                next_state = add_defective_parenthesis(
+                    next_state, 
+                    (defective_index - 1) % self.n_protomers)
+                kinetic_scheme.add_edges_from([
+                    (state, next_state, {'rate': lambda: self.k_up, 
+                                         'position': 2}),
+                    (next_state, state, {'rate': lambda: self.k_down, 
+                                         'position': -2})
+                ])
+            elif undefective_state[-1] == 'D':
+                next_state = undefective_state[:-1] + 'T'
+                next_state = add_defective_parenthesis(next_state, defective_index)
+                kinetic_scheme.add_edges_from([
+                    (state, next_state, {'rate': lambda: self.k_DT}),
+                    (next_state, state, {'rate': lambda: self.k_TD})
+                ])
+            elif 'D' not in undefective_state:
+                next_state = 'D' + undefective_state[1:]
+                next_state = add_defective_parenthesis(next_state, defective_index)
+                rate = (lambda: self.k_h_defective
+                        if defective_index == 0
+                        else lambda: self.k_h)
+                kinetic_scheme.add_edges_from([
+                    (state, next_state, {'rate': rate, 
+                                         'ATP': -1}),
+                    (next_state, state, {'rate': lambda: self.k_s, 
+                                         'ATP': 1})
+                ])
+            else:
+                raise ValueError("Invalid state.")
+        return kinetic_scheme
+
+
+
 
 
