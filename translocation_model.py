@@ -691,8 +691,8 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
     
     Single loop translocation model with one defective protomer. The defective
-    protomer has an hydrolisis rate that is 10 times smaller than the other
-    protomers.
+    protomer has an hydrolisis rate that is defect_factor times smaller than the 
+    other protomers.
 
     The states are defined by the ADP/ATP-state of the protomer and the 
     position of the defective protomer, e.g. DTT(T)TT, 
@@ -706,20 +706,52 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
     The total number of states is then 3*n_protomers.
     """
 
-    def __init__(self, n_protomers: int = 6, ATP_ADP_ratio: float = 10) -> None:
+    def __init__(
+            self, 
+            defect_factor: float = 0.1,
+            n_protomers: int = 6, 
+            ATP_ADP_ratio: float = 10
+    ) -> None:
+        """Initialize the defective translocation model.
+
+        Args:
+            defect_factor: The factor by which the defective protomer hydrolisis
+                rate is smaller than the other protomers hydrolisis rate.
+            n_protomers: The number of protomers.
+            ATP_ADP_ratio: The ATP/ADP ratio.
+        """
         super().__init__(ATP_ADP_ratio)
         self.n_protomers = n_protomers
-        self.k_h_defective = self.k_h / 10
+        self.k_h_defective = self.k_h * defect_factor
         self.kinetic_scheme = self._construct_kinetic_scheme()
     
     # TODO
-    @property
-    def k_down(self) -> float:
+    #@property
+    #def k_down(self) -> float:
         """Translocation down rate.
         
         It is constrained by the thermodynamics of the kinetic scheme.
         """
         pass
+
+    def defect_ignored_probabilities(self) -> dict[str, float]:
+        """Compute the total probabilies to be in each defect-ignored state.
+        
+        Defect-ignored states mean that we do not differenciate the states
+        where the defective protomer is at different positions, e.g. 
+        DTT(T)TT, DTTT(T)T and DTTTT(T) are all considered as DTTTTT.
+        """
+        probabilities = self._compute_probabilities()
+        defect_ignored_probabilities = {}
+        for state in probabilities:
+            defect_ignored_state = state.replace('(', '').replace(')', '')
+            if defect_ignored_state in defect_ignored_probabilities:
+                defect_ignored_probabilities[defect_ignored_state] += (
+                    probabilities[state])
+            else:
+                defect_ignored_probabilities[defect_ignored_state] = (
+                    probabilities[state])
+        return defect_ignored_probabilities
 
     def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
     ) -> nx.DiGraph:
@@ -736,15 +768,15 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
                     probability=lambda: self._compute_probabilities()[state]
                 )
 
-        def add_defective_parenthesis(state: str, i: int) -> str:
+        def add_defect_parenthesis(state: str, i: int) -> str:
             return state[:i] + '(' + state[i] + ')' + state[i+1:]
 
         for state in kinetic_scheme.nodes():
-            undefective_state = state.replace('(', '').replace(')', '')
+            defect_ignored_state = state.replace('(', '').replace(')', '')
             defective_index = state.find('(')
-            if undefective_state[0] == 'D':
-                next_state = undefective_state[1:] + 'D'
-                next_state = add_defective_parenthesis(
+            if defect_ignored_state[0] == 'D':
+                next_state = defect_ignored_state[1:] + 'D'
+                next_state = add_defect_parenthesis(
                     next_state, 
                     (defective_index - 1) % self.n_protomers)
                 kinetic_scheme.add_edges_from([
@@ -753,17 +785,17 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
                     (next_state, state, {'rate': lambda: self.k_down, 
                                          'position': -2})
                 ])
-            elif undefective_state[-1] == 'D':
-                next_state = undefective_state[:-1] + 'T'
-                next_state = add_defective_parenthesis(next_state, defective_index)
+            elif defect_ignored_state[-1] == 'D':
+                next_state = defect_ignored_state[:-1] + 'T'
+                next_state = add_defect_parenthesis(next_state, defective_index)
                 kinetic_scheme.add_edges_from([
                     (state, next_state, {'rate': lambda: self.k_DT}),
                     (next_state, state, {'rate': lambda: self.k_TD})
                 ])
-            elif 'D' not in undefective_state:
-                next_state = 'D' + undefective_state[1:]
-                next_state = add_defective_parenthesis(next_state, defective_index)
-                rate = (lambda: self.k_h_defective
+            elif 'D' not in defect_ignored_state:
+                next_state = 'D' + defect_ignored_state[1:]
+                next_state = add_defect_parenthesis(next_state, defective_index)
+                rate = ((lambda: self.k_h_defective)
                         if defective_index == 0
                         else lambda: self.k_h)
                 kinetic_scheme.add_edges_from([
