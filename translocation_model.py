@@ -765,7 +765,8 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
                 state = state[:i] + '(' + state[i] + ')' + state[i+1:]
                 kinetic_scheme.add_node(
                     state, 
-                    probability=lambda: self._compute_probabilities()[state]
+                    probability=lambda state=state: 
+                        self._compute_probabilities()[state]
                 )
 
         def add_defect_parenthesis(state: str, i: int) -> str:
