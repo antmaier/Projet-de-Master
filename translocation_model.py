@@ -1,3 +1,4 @@
+from networkx.classes import DiGraph
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -38,14 +39,12 @@ class TranslocationModel(ABC):
     Physical parameters:
         ATP_ADP_ratio: The ATP/ADP ratio.
         equilibrium_ATP_ADP_ratio: The equilibrium ATP/ADP ratio.
-        k_on_ATP: The association rate of ATP to the protomer.
-        k_off_ATP: The dissociation rate of ATP from the protomer.
-        k_on_ADP: The association rate of ADP to the protomer.
-        k_off_ADP: The dissociation rate of ADP from the protomer.
         k_h: The ATP hydrolysis rate.
         k_s: The ATP synthesis rate.
         K_d_ATP: The protomer-ATP dissociation constant.
         K_d_ADP: The protomer-ADP dissociation constant.
+        k_DT: Effective ATP->ADP exchange rate.
+        k_TD: Effective ADP->ATP exchange rate.
 
 
     Remark for code maintainers:
@@ -59,11 +58,11 @@ class TranslocationModel(ABC):
     def __init__(self, ATP_ADP_ratio: float = 10,): 
         self.equilibrium_ATP_ADP_ratio = 1
         self._ATP_ADP_ratio = ATP_ADP_ratio
-        # Association/dissociation protomer-ATP/ADP rates
-        self.k_on_ATP = 1
-        self.k_off_ATP = 1
-        self.k_on_ADP = 1
-        self.k_off_ADP = 1
+        # Protomer-ATP/ADP dissociation constants
+        self.K_d_ATP = 1
+        self.K_d_ADP = 1
+        # Effective ADP->ATP exchange rate
+        self.k_DT = 1
         # ATP hydrolysis/synthesis rates
         self.k_h = 1
         self.k_s = 1
@@ -82,14 +81,12 @@ class TranslocationModel(ABC):
         self._ATP_ADP_ratio = value
 
     @property
-    def K_d_ATP(self) -> float: 
-        """Protomer-ATP dissociation constant."""
-        return self.k_off_ATP / self.k_on_ATP
-
-    @property
-    def K_d_ADP(self) -> float: 
-        """Protomer-ATP dissociation constants"""
-        return self.k_off_ADP / self.k_on_ADP
+    def k_TD(self) -> float:
+        """Effective ATP->ADP exchange rate.
+        
+        It is constrained by the ATP/ADP exchange model.
+        """
+        return self.k_DT * self.K_d_ATP / self.K_d_ADP / self.ATP_ADP_ratio                    
 
     # TODO automate probabilities update when physical parameters are modified
     # maybe using __setattr__
@@ -226,7 +223,7 @@ class TranslocationModel(ABC):
                 label="From average velocity", color='C3')
         ax.set_xlabel("Time" + " [" + time_unit + "]")
         ax.set_ylabel("Position" + " [" + position_unit + "]")
-        ax.legend() # TODO only one color for all trajectories
+        ax.legend()
         if kinetic_scheme_image_path:
             img = np.asarray(Image.open(kinetic_scheme_image_path))
             sub_ax = ax.inset_axes([0.55, 0., 0.44, 0.44])
@@ -262,7 +259,7 @@ class TranslocationModel(ABC):
                   * self.kinetic_scheme.edges[u, v]['rate']())
     
     def normalize_average_velocity(self, inplace: bool = False
-    ) -> nx.DiGraph | None: 
+    ) -> DiGraph | None: 
         """Normalize the average velocity of the translocation model.
 
         Update all the rates so that the average velocity is 1.
@@ -367,8 +364,8 @@ class TranslocationModel(ABC):
     @abstractmethod
     def _construct_kinetic_scheme(
         self, 
-        kinetic_scheme: nx.DiGraph | None = None
-    ) -> nx.DiGraph:
+        kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
         """Construct the kinetic scheme of the translocation model.
         
         The kinetic scheme is a directed graph where the nodes are the states of
@@ -413,7 +410,7 @@ class TranslocationModel(ABC):
     def _compute_cumulative_sums(
         self,
         result: pd.DataFrame,
-        cumulative_sums: str | list[str], # TODO str or list[str] instead of dict and modify displacement to position
+        cumulative_sums: str | list[str],
     ) -> None:
         """Compute the cumulative sum of the specified edge attributes.
 
@@ -465,30 +462,13 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
     """Sequential Clockwise/2-Residue Step.
     
     Physical parameters:
-        k_DT: Effective ATP->ADP exchange rate.
-        k_TD: Effective ADP->ATP exchange rate.
         k_up: Translocation up rate.
         k_down: Translocation down rate.
     """
 
     def __init__(self, ATP_ADP_ratio: float = 10) -> None:
         super().__init__(ATP_ADP_ratio)
-
-        self.k_DT = 1 # Effective ADP->ATP exchange rate
         self.k_up = 1 # Translocation up rate
-    
-    @property
-    def k_TD(self) -> float:
-        """Effective ATP->ADP exchange rate.
-        
-        It is constrained by the ATP/ADP exchange model.
-        """
-        return (
-            self.k_DT
-            * self.K_d_ATP
-            / self.K_d_ADP
-            / self.ATP_ADP_ratio
-        )
     
     @property
     def k_down(self) -> float:
@@ -497,12 +477,9 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
         It is constrained by the thermodynamics of the kinetic scheme.
         """
         return (
-            self.k_h
-            * self.k_up
-            * self.k_DT
+            self.k_h * self.k_up * self.k_DT
             / (self.k_s * self.k_TD)
-            * self.equilibrium_ATP_ADP_ratio
-            / self.ATP_ADP_ratio
+            * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio)
         )
 
 
@@ -513,10 +490,10 @@ class SC2R1Loop(SequentialClockwise2ResidueStep):
         super().__init__(ATP_ADP_ratio)
         self.kinetic_scheme = self._construct_kinetic_scheme()
 
-    def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
-    ) -> nx.DiGraph:
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
         if not kinetic_scheme:
-            kinetic_scheme = nx.DiGraph()
+            kinetic_scheme = DiGraph()
         kinetic_scheme.add_nodes_from([
             ('TTT', {'probability': 
                         lambda: self._compute_probabilities()['TTT']}),
@@ -526,16 +503,12 @@ class SC2R1Loop(SequentialClockwise2ResidueStep):
                         lambda: self._compute_probabilities()['TTD']})
         ])
         kinetic_scheme.add_edges_from([
-            ('TTT', 'DTT', {'rate': lambda: self.k_h, 'name': 'k_h', 
-                            'ATP': -1}),
-            ('DTT', 'TTT', {'rate': lambda: self.k_s, 'name': 'k_s',
-                            'ATP': 1}),
-            ('DTT', 'TTD', {'rate': lambda: self.k_up, 'name': 'k_up', 
-                            'position': 2}), 
-            ('TTD', 'DTT', {'rate': lambda: self.k_down, 'name': 'k_down', 
-                            'position': -2}),
-            ('TTD', 'TTT', {'rate': lambda: self.k_DT, 'name': 'k_DT'}), 
-            ('TTT', 'TTD', {'rate': lambda: self.k_TD, 'name': 'k_TD'})
+            ('TTT', 'DTT', {'rate': lambda: self.k_h, 'ATP': -1}),
+            ('DTT', 'TTT', {'rate': lambda: self.k_s, 'ATP': 1}),
+            ('DTT', 'TTD', {'rate': lambda: self.k_up, 'position': 2}), 
+            ('TTD', 'DTT', {'rate': lambda: self.k_down, 'position': -2}),
+            ('TTD', 'TTT', {'rate': lambda: self.k_DT}), 
+            ('TTT', 'TTD', {'rate': lambda: self.k_TD})
         ])
         return kinetic_scheme
     
@@ -547,10 +520,10 @@ class SC2R2Loops(SequentialClockwise2ResidueStep):
         super().__init__(ATP_ADP_ratio)
         self.kinetic_scheme = self._construct_kinetic_scheme()
     
-    def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
-    ) -> nx.DiGraph:
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
         if not kinetic_scheme:
-            kinetic_scheme = nx.DiGraph()
+            kinetic_scheme = DiGraph()
         kinetic_scheme.add_nodes_from([
             ('TTT', {'probability': 
                         lambda: self._compute_probabilities()['TTT']}),
@@ -563,23 +536,17 @@ class SC2R2Loops(SequentialClockwise2ResidueStep):
         ])
         kinetic_scheme.add_edges_from([
             # Main loop
-            ('TTT', 'DTT', {'rate': lambda: self.k_h, 'name': 'k_h', 
-                            'ATP': -1}),
-            ('DTT', 'TTT', {'rate': lambda: self.k_s, 'name': 'k_s',
-                            'ATP': 1}),
-            ('DTT', 'TTD', {'rate': lambda: self.k_up, 'name': 'k_up', 
-                            'position': 2}),
-            ('TTD', 'DTT', {'rate': lambda: self.k_down, 'name': 'k_down', 
-                            'position': -2}),
-            ('TTD', 'TTT', {'rate': lambda: self.k_DT, 'name': 'k_DT'}),
-            ('TTT', 'TTD', {'rate': lambda: self.k_TD, 'name': 'k_TD'}),
+            ('TTT', 'DTT', {'rate': lambda: self.k_h, 'ATP': -1}),
+            ('DTT', 'TTT', {'rate': lambda: self.k_s, 'ATP': 1}),
+            ('DTT', 'TTD', {'rate': lambda: self.k_up, 'position': 2}),
+            ('TTD', 'DTT', {'rate': lambda: self.k_down, 'position': -2}),
+            ('TTD', 'TTT', {'rate': lambda: self.k_DT}),
+            ('TTT', 'TTD', {'rate': lambda: self.k_TD}),
             # Second loop
-            ('DTT', 'DTD', {'rate': lambda: self.k_TD, 'name': 'k_TD'}),
-            ('DTD', 'DTT', {'rate': lambda: self.k_DT, 'name': 'k_DT'}),
-            ('DTD', 'TTD', {'rate': lambda: self.k_s, 'name': 'k_s', 
-                            'ATP': 1}),
-            ('TTD', 'DTD', {'rate': lambda: self.k_h, 'name': 'k_h',
-                            'ATP': -1})
+            ('DTT', 'DTD', {'rate': lambda: self.k_TD}),
+            ('DTD', 'DTT', {'rate': lambda: self.k_DT}),
+            ('DTD', 'TTD', {'rate': lambda: self.k_s, 'ATP': 1}),
+            ('TTD', 'DTD', {'rate': lambda: self.k_h, 'ATP': -1})
         ])
         return kinetic_scheme
 
@@ -588,8 +555,6 @@ class DiscSpiral(TranslocationModel):
     """Disc-Spiral translocation model.
     
     Physical parameters:
-        k_DT
-        k_TD
         k_[extended/flat]_to_[flat/extended]_[up/down]
     """
 
@@ -597,7 +562,6 @@ class DiscSpiral(TranslocationModel):
         super().__init__(ATP_ADP_ratio)
 
         self.n_protomers = n_protomers
-        self.k_DT = 1 # Effective ADP->ATP exchange rate
         self.k_extended_to_flat_up = 1 # Spiral->disc up translocation rate
         self.k_flat_to_extended_down = 1 # Disc->spiral down translocation rate
         self.k_flat_to_extended_up = 1 # Disc->spiral up translocation rate
@@ -605,25 +569,21 @@ class DiscSpiral(TranslocationModel):
         self.kinetic_scheme = self._construct_kinetic_scheme()
     
     @property
-    def k_TD(self) -> float:
-        """Effective ATP->ADP exchange rate.
-        
-        It is constrained by the ATP/ADP exchange model.
-        """
-        return (
-            self.k_DT
-            * self.K_d_ATP
-            / self.K_d_ADP
-            / self.ATP_ADP_ratio
-        )
-    
-    @property
-    def k_bar_h(self) -> float:
+    def k_h_bar(self) -> float:
         """Effective ATP hydrolisis rate.
         
         Each protomer contributes k_h to the effective hydrolisis rate.
         """
         return self.n_protomers * self.k_h
+
+    @property
+    def k_flat_to_extended_down_bar(self) -> float:
+        """Effective disc->spiral down translocation rate.
+        
+        Each protomer contributes k_flat_to_extended_down to the effective 
+        translocation rate.
+        """
+        return self.n_protomers * self.k_flat_to_extended_down
     
     @property
     def k_extended_to_flat_down(self) -> float:
@@ -631,58 +591,40 @@ class DiscSpiral(TranslocationModel):
         
         It is constrained by the thermodynamics of the kinetic scheme.
         """
-        return (self.k_bar_h 
-                * self.k_flat_to_extended_up 
-                * self.k_DT 
-                * self.k_extended_to_flat_up 
-                / (self.k_s * self.k_TD * self.k_flat_to_extended_down)
-                * self.equilibrium_ATP_ADP_ratio
-                / self.ATP_ADP_ratio
-        )
+        return ((self.k_h_bar * self.k_flat_to_extended_up * self.k_DT 
+                 * self.k_extended_to_flat_up)
+                / (self.k_s * self.k_TD * self.k_flat_to_extended_down_bar)
+                * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio))
 
-    def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
-    ) -> nx.DiGraph:
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
         if not kinetic_scheme:
-            kinetic_scheme = nx.DiGraph()
+            kinetic_scheme = DiGraph()
         kinetic_scheme.add_nodes_from([
             ('flat-ATP', {'probability': 
                         lambda: self._compute_probabilities()['flat-ATP']}),
             ('flat-ADP', {'probability':
                         lambda: self._compute_probabilities()['flat-ADP']}),
-            ('extended-ATP', {'probability': 
-                        lambda: self._compute_probabilities()['extended-ATP']}),
             ('extended-ADP', {'probability': 
-                        lambda: self._compute_probabilities()['extended-ADP']})
+                        lambda: self._compute_probabilities()['extended-ADP']}),
+            ('extended-ATP', {'probability': 
+                        lambda: self._compute_probabilities()['extended-ATP']})
         ])
         kinetic_scheme.add_edges_from([ # ⤴⤵⤷↳↱ 
-            ('flat-ATP', 'flat-ADP', {
-                'rate': lambda: self.k_bar_h, 
-                'name': 'k_bar_h', #\bar{k}_h
-                'ATP': -1}),
-            ('flat-ADP', 'flat-ATP', {
-                'rate': lambda: self.k_s, 
-                'name': 'k_s',
-                'ATP': 1}),
-            ('flat-ADP', 'extended-ADP', {
-                'rate': lambda: self.k_flat_to_extended_up, 
-                'name': 'k_flat_to_extended_up', # k_⤴
+            ('flat-ATP', 'flat-ADP', {'rate': lambda: self.k_h_bar, 'ATP': -1}),
+            ('flat-ADP', 'flat-ATP', {'rate': lambda: self.k_s, 'ATP': 1}),
+            ('flat-ADP', 'extended-ADP', { # k_⤴
+                'rate': lambda: self.k_flat_to_extended_up,
                 'position': 2*(self.n_protomers-1)}),
-            ('extended-ADP', 'flat-ADP', {
+            ('extended-ADP', 'flat-ADP', { # k_↳
                 'rate': lambda: self.k_extended_to_flat_down,
-                'name': 'k_extended_to_flat_down', # k_↳
                 'position': -2*(self.n_protomers-1)}),
-            ('extended-ADP', 'extended-ATP', {
-                'rate': lambda: self.k_DT, 
-                'name': 'k_DT'}),
-            ('extended-ATP', 'extended-ADP', {
-                'rate': lambda: self.k_TD, 
-                'name': 'k_TD'}),
-            ('extended-ATP', 'flat-ATP', {
-                'rate': lambda: self.k_extended_to_flat_up,
-                'name': 'k_extended_to_flat_up'}), # k_↱
-            ('flat-ATP', 'extended-ATP', {
-                'rate': lambda: self.k_flat_to_extended_down,
-                'name': 'k_flat_to_extended_down'}) # k_⤵
+            ('extended-ADP', 'extended-ATP', {'rate': lambda: self.k_DT}),
+            ('extended-ATP', 'extended-ADP', {'rate': lambda: self.k_TD}),
+            ('extended-ATP', 'flat-ATP', { # k_↱
+                'rate': lambda: self.k_extended_to_flat_up}),
+            ('flat-ATP', 'extended-ATP', { # k_⤵
+                'rate': lambda: self.k_flat_to_extended_down_bar})
         ])
         return kinetic_scheme
 
@@ -690,9 +632,9 @@ class DiscSpiral(TranslocationModel):
 class DefectiveSC2R(SequentialClockwise2ResidueStep):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
     
-    Single loop translocation model with one defective protomer. The defective
-    protomer has an hydrolisis rate that is defect_factor times smaller than the 
-    other protomers.
+    Single-loop-like translocation model with one defective protomer. The 
+    defective protomer has an hydrolisis rate that is defect_factor times 
+    smaller than the other protomers.
 
     The states are defined by the ADP/ATP-state of the protomer and the 
     position of the defective protomer, e.g. DTT(T)TT, 
@@ -709,54 +651,62 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
     def __init__(
             self, 
             defect_factor: float = 0.1,
-            n_protomers: int = 6, 
-            ATP_ADP_ratio: float = 10
+            ATP_ADP_ratio: float = 10,
+            n_protomers: int = 6
     ) -> None:
         """Initialize the defective translocation model.
 
         Args:
             defect_factor: The factor by which the defective protomer hydrolisis
                 rate is smaller than the other protomers hydrolisis rate.
-            n_protomers: The number of protomers.
             ATP_ADP_ratio: The ATP/ADP ratio.
+            n_protomers: The number of protomers.
         """
         super().__init__(ATP_ADP_ratio)
+        self.defect_factor = defect_factor
         self.n_protomers = n_protomers
-        self.k_h_defective = self.k_h * defect_factor
         self.kinetic_scheme = self._construct_kinetic_scheme()
+
+    @property
+    def k_h_defect(self) -> float:
+        """ATP hydrolisis rate of the defective protomer."""
+        return self.defect_factor * self.k_h
     
-    # TODO
-    #@property
-    #def k_down(self) -> float:
+    @property
+    def k_down(self) -> float:
         """Translocation down rate.
         
         It is constrained by the thermodynamics of the kinetic scheme.
         """
-        pass
+        return (
+            (self.k_h**5 * self.k_h_defect)**(1/6) * self.k_up * self.k_DT
+            / (self.k_s * self.k_TD)
+            * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio)
+        )
 
-    def defect_ignored_probabilities(self) -> dict[str, float]:
-        """Compute the total probabilies to be in each defect-ignored state.
+    def probabilities_defect_ignored(self) -> dict[str, float]:
+        """Compute the total probabilities to be in each defect-ignored state.
         
         Defect-ignored states mean that we do not differenciate the states
         where the defective protomer is at different positions, e.g. 
         DTT(T)TT, DTTT(T)T and DTTTT(T) are all considered as DTTTTT.
         """
         probabilities = self._compute_probabilities()
-        defect_ignored_probabilities = {}
+        probabilities_defect_ignored = {}
         for state in probabilities:
-            defect_ignored_state = state.replace('(', '').replace(')', '')
-            if defect_ignored_state in defect_ignored_probabilities:
-                defect_ignored_probabilities[defect_ignored_state] += (
+            state_defect_ignored = state.replace('(', '').replace(')', '')
+            if state_defect_ignored in probabilities_defect_ignored:
+                probabilities_defect_ignored[state_defect_ignored] += (
                     probabilities[state])
             else:
-                defect_ignored_probabilities[defect_ignored_state] = (
+                probabilities_defect_ignored[state_defect_ignored] = (
                     probabilities[state])
-        return defect_ignored_probabilities
+        return probabilities_defect_ignored
 
-    def _construct_kinetic_scheme(self, kinetic_scheme: nx.DiGraph | None = None
-    ) -> nx.DiGraph:
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
         if not kinetic_scheme:
-            kinetic_scheme = nx.DiGraph()
+            kinetic_scheme = DiGraph()
         for i in range(self.n_protomers):
             states = ['T'*self.n_protomers, 
                       'D' + 'T'*(self.n_protomers-1),
@@ -773,31 +723,31 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
             return state[:i] + '(' + state[i] + ')' + state[i+1:]
 
         for state in kinetic_scheme.nodes():
-            defect_ignored_state = state.replace('(', '').replace(')', '')
-            defective_index = state.find('(')
-            if defect_ignored_state[0] == 'D':
-                next_state = defect_ignored_state[1:] + 'D'
+            state_defect_ignored = state.replace('(', '').replace(')', '')
+            defect_index = state.find('(')
+            if state_defect_ignored[0] == 'D':
+                next_state = state_defect_ignored[1:] + 'D'
                 next_state = add_defect_parenthesis(
                     next_state, 
-                    (defective_index - 1) % self.n_protomers)
+                    (defect_index - 1) % self.n_protomers)
                 kinetic_scheme.add_edges_from([
                     (state, next_state, {'rate': lambda: self.k_up, 
                                          'position': 2}),
                     (next_state, state, {'rate': lambda: self.k_down, 
                                          'position': -2})
                 ])
-            elif defect_ignored_state[-1] == 'D':
-                next_state = defect_ignored_state[:-1] + 'T'
-                next_state = add_defect_parenthesis(next_state, defective_index)
+            elif state_defect_ignored[-1] == 'D':
+                next_state = state_defect_ignored[:-1] + 'T'
+                next_state = add_defect_parenthesis(next_state, defect_index)
                 kinetic_scheme.add_edges_from([
                     (state, next_state, {'rate': lambda: self.k_DT}),
                     (next_state, state, {'rate': lambda: self.k_TD})
                 ])
-            elif 'D' not in defect_ignored_state:
-                next_state = 'D' + defect_ignored_state[1:]
-                next_state = add_defect_parenthesis(next_state, defective_index)
-                rate = ((lambda: self.k_h_defective)
-                        if defective_index == 0
+            elif 'D' not in state_defect_ignored:
+                next_state = 'D' + state_defect_ignored[1:]
+                next_state = add_defect_parenthesis(next_state, defect_index)
+                rate = ((lambda: self.k_h_defect)
+                        if defect_index == 0
                         else lambda: self.k_h)
                 kinetic_scheme.add_edges_from([
                     (state, next_state, {'rate': rate, 
@@ -810,6 +760,130 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
         return kinetic_scheme
 
 
+class DefectiveDiscSpiral(DiscSpiral):
+    """Disc-spiral model with one protomer with defective hydrolisis.
+    
+    The defective protomer has an hydrolisis rate that is defect_factor times 
+    smaller than the other protomers.
 
+    The states in defect-free loops are denoted by:
+        'flat-ATP', 'flat-ADP', 'extended-ATP', 'extended-ADP'
+    and in the defective loop by:
+        'flat-ADP-defect', 'extended-ATP-defect', 'extended-ADP-defect'
+
+    There are n_protomers-1 defect-free loops and one defective loop. For 
+    simplicity of the code, we aggregate all the defect-free loops together in a
+    single loop with an effective hydrolisis rate k_h_bar = (n_protomers-1)*k_h, 
+    and an effective disc->spiral down translocation rate 
+    k_flat_to_extended_down_bar = (n_protomers-1)*k_flat_to_extended_down.
+    """
+
+    def __init__(
+            self, 
+            defect_factor: float = 0.1, 
+            ATP_ADP_ratio: float = 10, 
+            n_protomers: int = 6
+    ) -> None:
+        """Initialize the defective translocation model.
+        
+        Args:
+            defect_factor: The factor by which the defective protomer hydrolisis
+                rate is smaller than the other protomers hydrolisis rate.
+        """
+        super().__init__(ATP_ADP_ratio, n_protomers)
+        self.defect_factor = defect_factor
+        # Redundant kinetic_scheme construction, but more explicit
+        self.kinetic_scheme = self._construct_kinetic_scheme() 
+
+    @property
+    def k_h_defect(self) -> float:
+        """ATP hydrolisis rate of the defective protomer."""
+        return self.defect_factor * self.k_h
+    
+    @property
+    def k_s_defect(self) -> float:
+        """ATP synthesis rate of the defective protomer."""
+        return self.defect_factor * self.k_s
+    
+    @property
+    def k_h_bar(self) -> float:
+        """Effective ATP hydrolisis rate for defect-free loop.
+        
+        Each defect-free protomer contributes k_h to the effective hydrolisis 
+        rate.
+        """
+        return (self.n_protomers - 1) * self.k_h
+    
+    @property
+    def k_flat_to_extended_down_bar(self) -> float:
+        """Effective disc->spiral down translocation rate.
+        
+        Each defect-free protomer contributes k_flat_to_extended_down to the 
+        effective translocation rate.
+        """
+        return (self.n_protomers - 1) * self.k_flat_to_extended_down
+    
+    # No need to redefine k_extended_to_flat_down, the thermodynamic constraint
+    # is the same as in the defect-free case.
+
+    def probabilities_defect_ignored(self) -> dict[str, float]:
+        """Compute the total probabilities to be in each defect-ignored state.
+        
+        Defect-ignored mean that we do not differenciate the defect-free 
+        protomers from the defective one.
+        The states are then:
+            'flat-ATP', 'flat-ADP', 'extended-ATP', 'extended-ADP'
+        """
+        probabilities = self._compute_probabilities()
+        probabilities_defect_ignored = {
+            'flat-ATP': probabilities['flat-ATP'],
+            'flat-ADP': (probabilities['flat-ADP'] 
+                         + probabilities['flat-ADP-defect']),
+            'extended-ATP': (probabilities['extended-ATP'] 
+                             + probabilities['extended-ATP-defect']),
+            'extended-ADP': (probabilities['extended-ADP']
+                                + probabilities['extended-ADP-defect'])
+        }
+        return probabilities_defect_ignored
+    
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+    ) -> DiGraph:
+        # Defect-free loop
+        kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
+        # Defective loop
+        kinetic_scheme.add_nodes_from([
+            ('flat-ADP-defect', 
+             {'probability': 
+                 lambda: self._compute_probabilities()['flat-ADP-defect']}),
+            ('extended-ATP-defect', 
+             {'probability':
+                 lambda: self._compute_probabilities()['extended-ATP-defect']}),
+            ('extended-ADP-defect', 
+             {'probability': 
+                 lambda: self._compute_probabilities()['extended-ADP-defect']})
+        ])
+        kinetic_scheme.add_edges_from([
+            ('flat-ATP', 'flat-ADP-defect', { # Defective hydrolisis
+                'rate': lambda: self.k_h_defect, 
+                'ATP': -1}),
+            ('flat-ADP-defect', 'flat-ATP', { # Defective synthesis
+                'rate': lambda: self.k_s_defect, 
+                'ATP': 1}),
+            ('flat-ADP-defect', 'extended-ADP-defect', { # k_⤴
+                'rate': lambda: self.k_flat_to_extended_up,
+                'position': 2*(self.n_protomers-1)}),
+            ('extended-ADP-defect', 'flat-ADP-defect', { # k_↳
+                'rate': lambda: self.k_extended_to_flat_down,
+                'position': -2*(self.n_protomers-1)}),
+            ('extended-ADP-defect', 'extended-ATP-defect', { # ADP->ATP exchange
+                'rate': lambda: self.k_DT}),
+            ('extended-ATP-defect', 'extended-ADP-defect', { # ATP->ADP exchange
+                'rate': lambda: self.k_TD}),
+            ('extended-ATP-defect', 'flat-ATP', { # k_↱
+                'rate': lambda: self.k_extended_to_flat_up}),
+            ('flat-ATP', 'extended-ATP-defect', { # k_⤵
+                'rate': lambda: self.k_flat_to_extended_down})
+        ])
+        return kinetic_scheme
 
 
