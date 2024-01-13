@@ -38,13 +38,13 @@ class TranslocationModel(ABC):
 
     Physical parameters:
         ATP_ADP_ratio: The ATP/ADP ratio.
-        equilibrium_ATP_ADP_ratio: The equilibrium ATP/ADP ratio.
-        k_h: The ATP hydrolysis rate.
-        k_s: The ATP synthesis rate.
+        equilibrium_ATP_ADP_ratio: The equilibrium ATP/ADP concentration ratio.
         K_d_ATP: The protomer-ATP dissociation constant.
         K_d_ADP: The protomer-ADP dissociation constant.
-        k_DT: Effective ATP->ADP exchange rate.
-        k_TD: Effective ADP->ATP exchange rate.
+        k_DT: Effective ADP->ATP exchange rate.
+        k_TD: Effective ATP->ADP exchange rate.
+        k_h: The ATP hydrolysis rate.
+        k_s: The ATP synthesis rate.
 
 
     Remark for code maintainers:
@@ -71,7 +71,7 @@ class TranslocationModel(ABC):
         
     @property
     def ATP_ADP_ratio(self) -> float:
-        """ATP/ADP concentrations ratio."""
+        """ATP/ADP concentration ratio."""
         return self._ATP_ADP_ratio
     
     @ATP_ADP_ratio.setter
