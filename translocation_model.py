@@ -176,7 +176,7 @@ class TranslocationModel(ABC):
         self, 
         trajectory: pd.DataFrame | list[pd.DataFrame],
         time_unit: str, 
-        position_unit: str = "#Residues", 
+        position_unit: str = "Residues", 
         kinetic_scheme_image_path: str | None = None, 
         ax: mpl.axes.Axes | None = None,
         title: str | None = None,
@@ -476,7 +476,7 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
         )
 
 
-class SC2R1Loop(SequentialClockwise2ResidueStep):
+class SC2R1Loop(SequentialClockwise2ResidueStep): # TODO Rename SC2R and move to superclass, check if it works with defective model
     """Sequential Clockwise/2-Residue Step, 1-Loop translocation model."""
 
     def __init__(self, ATP_ADP_ratio: float = 10) -> None:
