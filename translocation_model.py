@@ -56,8 +56,8 @@ class TranslocationModel(ABC):
     """
 
     def __init__(self, ATP_ADP_ratio: float = 10,): 
-        self.equilibrium_ATP_ADP_ratio = 1
         self._ATP_ADP_ratio = ATP_ADP_ratio
+        self.equilibrium_ATP_ADP_ratio = 1
         # Protomer-ATP/ADP dissociation constants
         self.K_d_ATP = 1
         self.K_d_ADP = 1
@@ -87,10 +87,6 @@ class TranslocationModel(ABC):
         It is constrained by the ATP/ADP exchange model.
         """
         return self.k_DT * self.K_d_ATP / self.K_d_ADP / self.ATP_ADP_ratio                    
-
-    # TODO automate probabilities update when physical parameters are modified
-    # maybe using __setattr__
-
     
     def gillespie(
         self, 
