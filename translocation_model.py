@@ -581,9 +581,9 @@ class DiscSpiral(TranslocationModel):
     @property
     def k_extended_to_flat_down(self) -> float:
         """Spiral->disc down translocation rate, constrained by the detailed balance."""
-        return ((self.k_h_bar * self.k_flat_to_extended_up * self.k_DT 
+        return ((self.k_h * self.k_flat_to_extended_up * self.k_DT 
                  * self.k_extended_to_flat_up)
-                / (self.k_s * self.k_TD * self.k_flat_to_extended_down_bar)
+                / (self.k_s * self.k_TD * self.k_flat_to_extended_down)
                 * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio))
 
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
