@@ -468,10 +468,7 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
     
     @property
     def k_down(self) -> float:
-        """Translocation down rate.
-        
-        It is constrained by the thermodynamics of the kinetic scheme.
-        """
+        """Translocation down rate, constrained by the detailed balance."""
         return (
             self.k_h * self.k_up * self.k_DT
             / (self.k_s * self.k_TD)
@@ -583,10 +580,7 @@ class DiscSpiral(TranslocationModel):
     
     @property
     def k_extended_to_flat_down(self) -> float:
-        """Spiral->disc down translocation rate.
-        
-        It is constrained by the thermodynamics of the kinetic scheme.
-        """
+        """Spiral->disc down translocation rate, constrained by the detailed balance."""
         return ((self.k_h_bar * self.k_flat_to_extended_up * self.k_DT 
                  * self.k_extended_to_flat_up)
                 / (self.k_s * self.k_TD * self.k_flat_to_extended_down_bar)
@@ -670,10 +664,7 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
     
     @property
     def k_down(self) -> float:
-        """Translocation down rate.
-        
-        It is constrained by the thermodynamics of the kinetic scheme.
-        """
+        """Translocation down rate, constrained by the detailed balance."""
         return (
             (self.k_h**5 * self.k_h_defect)**(1/6) * self.k_up * self.k_DT
             / (self.k_s * self.k_TD)
@@ -819,8 +810,8 @@ class DefectiveDiscSpiral(DiscSpiral):
         """
         return (self.n_protomers - 1) * self.k_flat_to_extended_down
     
-    # No need to redefine k_extended_to_flat_down, the thermodynamic constraint
-    # is the same as in the defect-free case.
+    # No need to redefine k_extended_to_flat_down, the detailed balance 
+    # constraint is the same as in the defect-free case.
 
     def probabilities_defect_ignored(self) -> dict[str, float]:
         """Compute the total probabilities to be in each defect-ignored state.
