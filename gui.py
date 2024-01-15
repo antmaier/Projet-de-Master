@@ -93,7 +93,7 @@ class Gui():
 
         ATP_ADP_ratio = self._add_parameter(
             row + 1, r"\frac{[\text{ATP}]}{[\text{ADP}]}", 
-            "ATP/ADP concentration ratio")
+            "ATP/ADP concentration ratio", value=10.0)
         
         equilibrium_ATP_ADP_ratio = self._add_parameter(
             row + 2, r"\frac{[\text{ATP}]}{[\text{ADP}]}\Bigr|_\text{eq.}", 
