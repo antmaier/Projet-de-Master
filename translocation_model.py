@@ -136,8 +136,14 @@ class TranslocationModel(ABC):
             result = {'timestamp': [], 'edge': []}
 
             time = 0
-            state = (initial_state if initial_state 
-                     else np.random.choice(list(self.kinetic_scheme.nodes()))) # TODO init with probabilities
+            if initial_state:
+                state = initial_state
+            else:
+                sorted_nodes = sorted(self.kinetic_scheme.nodes())
+                probabilities = [
+                    self.kinetic_scheme.nodes[node]['probability']() 
+                    for node in sorted_nodes]
+                state = np.random.choice(sorted_nodes, p=probabilities)
             for _ in range(n_steps):
                 # Each step the system starts in the current state and then 
                 # after a sojourn time given by an exponential distribution
