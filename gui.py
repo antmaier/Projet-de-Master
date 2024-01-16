@@ -34,7 +34,7 @@ class GUI():
         self.n_cols = 3
         self.grid = GridspecLayout(self.n_rows, self.n_cols)
         self.parameters = {}
-            
+
     def add_general_parameters(self, row: int = 0) -> None:
         """Add write/read interface for general physical parameters (9 rows).
 
@@ -58,7 +58,7 @@ class GUI():
         7: ATP hydrolysis rate (k_h)
         8: ATP synthesis rate (k_s)
         """
-        self.grid[row, :] = Label(value="General Physical Parameters")
+        self.grid[row, :] = HTML(value="<b>General Physical Parameters</b>")
 
         ATP_ADP_ratio = self._add_parameter(
             row + 1, "[ATP]/[ADP]", "ATP/ADP concentration ratio", value=10.0)
@@ -122,8 +122,8 @@ class GUI():
         1: Translocation up rate (k_up)
         2: Translocation down rate (k_down) (constrained by the detailed balance)
         """
-        self.grid[row, :] = Label(
-            value="Sequential Clockwise/2-Residue Step Model Physical Parameters")
+        self.grid[row, :] = HTML(value="<b>Sequential Clockwise/2-Residue "\
+                                 "Step Model Physical Parameters</b>")
         
         k_up = self._add_parameter(row + 1, "k_↑", "Translocation up rate")
         
@@ -177,8 +177,8 @@ class GUI():
         7: Spiral->disc down translocation rate (k_extended_to_flat_down) (
             constrained by the detailed balance)
         """
-        self.grid[row, 0] = Label(
-            value="Disc-Spiral Model Physical Parameters")
+        self.grid[row, 0] = HTML(
+            value="<b>Disc-Spiral Model Physical Parameters</b>")
         
         n_protomers = self._add_parameter(
             row + 1, "n_protomers", "Number of protomers", value=6, type='int', 
