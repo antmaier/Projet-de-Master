@@ -48,10 +48,10 @@ class GUI():
         Each parameter row contains a symbol, a value, and a description. 
         The rows are:
         0: "General physical parameters"
-        1: ATP/ADP concentration ratio (ATP_ADP_ratio)
-        2: Equilibrium ATP/ADP concentration ratio (equilibrium_ATP_ADP_ratio)
-        3: Protomer-ATP dissociation constant (K_d_ATP)
-        4: Protomer-ADP dissociation constant (K_d_ADP)
+        1: ATP/ADP concentration ratio (atp_adp_ratio)
+        2: Equilibrium ATP/ADP concentration ratio (equilibrium_atp_adp_ratio)
+        3: Protomer-ATP dissociation constant (K_d_atp)
+        4: Protomer-ADP dissociation constant (K_d_adp)
         5: Effective ADP->ATP exchange rate (k_DT)
         6: Effective ATP->ADP exchange rate (k_TD) (constrained by ATP<->ADP 
             exchange model)
@@ -60,25 +60,25 @@ class GUI():
         """
         self.grid[row, :] = HTML(value="<b>General Physical Parameters</b>")
 
-        ATP_ADP_ratio = self._add_parameter(
+        atp_adp_ratio = self._add_parameter(
             row + 1, "[ATP]/[ADP]", "ATP/ADP concentration ratio", value=10.0)
         
-        equilibrium_ATP_ADP_ratio = self._add_parameter(
+        equilibrium_atp_adp_ratio = self._add_parameter(
             row + 2, "([ATP]/[ADP])|eq.", 
             "Equilibrium ATP/ADP concentration ratio", value=0.01)
         
-        K_d_ATP = self._add_parameter(
+        K_d_atp = self._add_parameter(
             row + 3, "K_d^ATP", "Protomer-ATP dissociation constant", value=0.1)
         
-        K_d_ADP = self._add_parameter(
+        K_d_adp = self._add_parameter(
             row + 4, "K_d^ADP", "Protomer-ADP dissociation constant")
         
         k_DT = self._add_parameter(
             row + 5, "k_DT", "Effective ADP->ATP exchange rate")
         
         def compute_k_TD():
-            return (k_DT.value * K_d_ATP.value / K_d_ADP.value 
-                    / ATP_ADP_ratio.value)
+            return (k_DT.value * K_d_atp.value / K_d_adp.value 
+                    / atp_adp_ratio.value)
         k_TD = self._add_parameter(
             row + 6, "k_TD", "Effective ATP->ADP exchange rate "\
                 "(constrained by ATP<->ADP exchange model)", 
@@ -86,9 +86,9 @@ class GUI():
         def change_k_TD(_): 
             k_TD.value = str(compute_k_TD())
         k_DT.observe(change_k_TD, names='value')
-        K_d_ATP.observe(change_k_TD, names='value')
-        K_d_ADP.observe(change_k_TD, names='value')
-        ATP_ADP_ratio.observe(change_k_TD, names='value')
+        K_d_atp.observe(change_k_TD, names='value')
+        K_d_adp.observe(change_k_TD, names='value')
+        atp_adp_ratio.observe(change_k_TD, names='value')
 
         k_h = self._add_parameter(row + 7, "k_h", "ATP hydrolysis rate")
 
@@ -96,17 +96,17 @@ class GUI():
             row + 8, "k_s", "ATP synthesis rate", value=0.1)
 
         self.parameters.update({
-            "ATP_ADP_ratio": ATP_ADP_ratio,
-            "equilibrium_ATP_ADP_ratio": equilibrium_ATP_ADP_ratio,
-            "K_d_ATP": K_d_ATP,
-            "K_d_ADP": K_d_ADP,
+            "atp_adp_ratio": atp_adp_ratio,
+            "equilibrium_atp_adp_ratio": equilibrium_atp_adp_ratio,
+            "K_d_atp": K_d_atp,
+            "K_d_adp": K_d_adp,
             "k_DT": k_DT,
             "k_TD": k_TD,
             "k_h": k_h,
             "k_s": k_s,
         })
 
-    def add_SC2R_parameters(self, row: int) -> None:
+    def add_sc2r_parameters(self, row: int) -> None:
         """Add write/read interface for SC2R parameters (3 rows).
 
         Add inplace the parameters to the given grid and the 
@@ -133,8 +133,8 @@ class GUI():
                  * self.parameters["k_DT"].value)
                 / (self.parameters["k_s"].value 
                    * float(self.parameters["k_TD"].value)) # Because k_TD is a Label
-                * (self.parameters["equilibrium_ATP_ADP_ratio"].value 
-                   / self.parameters["ATP_ADP_ratio"].value)
+                * (self.parameters["equilibrium_atp_adp_ratio"].value 
+                   / self.parameters["atp_adp_ratio"].value)
             )
         k_down = self._add_parameter(
             row + 2, "k_↓", 
@@ -143,8 +143,8 @@ class GUI():
         def change_k_down(_):
             k_down.value = str(compute_k_down())
         k_up.observe(change_k_down, names='value')
-        self.parameters['ATP_ADP_ratio'].observe(change_k_down, names='value')
-        self.parameters['equilibrium_ATP_ADP_ratio'].observe(change_k_down, 
+        self.parameters['atp_adp_ratio'].observe(change_k_down, names='value')
+        self.parameters['equilibrium_atp_adp_ratio'].observe(change_k_down, 
                                                              names='value')
         self.parameters['k_h'].observe(change_k_down, names='value')
         self.parameters['k_s'].observe(change_k_down, names='value')
@@ -222,8 +222,8 @@ class GUI():
                     / (self.parameters["k_s"].value 
                        * float(self.parameters["k_TD"].value) 
                        * k_flat_to_extended_down.value)
-                    * (self.parameters["equilibrium_ATP_ADP_ratio"].value 
-                       / self.parameters["ATP_ADP_ratio"].value))
+                    * (self.parameters["equilibrium_atp_adp_ratio"].value 
+                       / self.parameters["atp_adp_ratio"].value))
         k_extended_to_flat_down = self._add_parameter(
             row + 7, r"k_⮩", "Spiral->disc down translocation rate "\
                 "(constrained by the detailed balance)",
@@ -242,9 +242,9 @@ class GUI():
                                         names='value')
         k_flat_to_extended_up.observe(change_k_extended_to_flat_down, 
                                       names='value')
-        self.parameters['ATP_ADP_ratio'].observe(change_k_extended_to_flat_down, 
+        self.parameters['atp_adp_ratio'].observe(change_k_extended_to_flat_down, 
                                                  names='value')
-        self.parameters['equilibrium_ATP_ADP_ratio'].observe(
+        self.parameters['equilibrium_atp_adp_ratio'].observe(
             change_k_extended_to_flat_down, names='value')
         
         self.parameters.update({
@@ -256,6 +256,9 @@ class GUI():
             "k_flat_to_extended_up": k_flat_to_extended_up,
             "k_extended_to_flat_down": k_extended_to_flat_down,
         })
+
+    def add_defect_sc2r_parameters(self, row: int) -> None:
+        pass # TODO
 
     def _add_parameter(
         self,
@@ -293,7 +296,6 @@ class GUI():
                 description=symbol + ':')
         elif type == 'constrained':
             parameter = HTML(value=str(value), description=symbol + ':')
-            #parameter = Label(value=str(value), description=symbol + ':')
         else:
             raise ValueError(
                 "type must be either 'float', 'int' or 'constrained'")

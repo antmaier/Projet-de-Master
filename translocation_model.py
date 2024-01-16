@@ -38,10 +38,10 @@ class TranslocationModel(ABC):
     TranslocationModel class, accessible in the kinetic_scheme attribute.
 
     Physical parameters:
-        ATP_ADP_ratio: The ATP/ADP ratio.
-        equilibrium_ATP_ADP_ratio: The equilibrium ATP/ADP concentration ratio.
-        K_d_ATP: The protomer-ATP dissociation constant.
-        K_d_ADP: The protomer-ADP dissociation constant.
+        atp_adp_ratio: The ATP/ADP ratio.
+        equilibrium_atp_adp_ratio: The equilibrium ATP/ADP concentration ratio.
+        K_d_atp: The protomer-ATP dissociation constant.
+        K_d_adp: The protomer-ADP dissociation constant.
         k_DT: Effective ADP->ATP exchange rate.
         k_TD: Effective ATP->ADP exchange rate.
         k_h: The ATP hydrolysis rate.
@@ -56,12 +56,12 @@ class TranslocationModel(ABC):
     For the models we have right now, it is not a problem.
     """
 
-    def __init__(self, ATP_ADP_ratio: float = 10,): 
-        self._ATP_ADP_ratio = ATP_ADP_ratio
-        self.equilibrium_ATP_ADP_ratio = 1
+    def __init__(self, atp_adp_ratio: float = 10,): 
+        self._atp_adp_ratio = atp_adp_ratio
+        self.equilibrium_atp_adp_ratio = 1
         # Protomer-ATP/ADP dissociation constants
-        self.K_d_ATP = 1
-        self.K_d_ADP = 1
+        self.K_d_atp = 1
+        self.K_d_adp = 1
         # Effective ADP->ATP exchange rate
         self.k_DT = 1
         # ATP hydrolysis/synthesis rates
@@ -71,15 +71,15 @@ class TranslocationModel(ABC):
         self.kinetic_scheme = self._construct_kinetic_scheme() # None # TODO abstract attribute
         
     @property
-    def ATP_ADP_ratio(self) -> float:
+    def atp_adp_ratio(self) -> float:
         """ATP/ADP concentration ratio."""
-        return self._ATP_ADP_ratio
+        return self._atp_adp_ratio
     
-    @ATP_ADP_ratio.setter
-    def ATP_ADP_ratio(self, value: float) -> None:
+    @atp_adp_ratio.setter
+    def atp_adp_ratio(self, value: float) -> None:
         if value < 0:
             raise ValueError("The ATP/ADP ratio must be nonnegative.")
-        self._ATP_ADP_ratio = value
+        self._atp_adp_ratio = value
 
     @property
     def k_TD(self) -> float:
@@ -87,7 +87,7 @@ class TranslocationModel(ABC):
         
         It is constrained by the ATP/ADP exchange model.
         """
-        return self.k_DT * self.K_d_ATP / self.K_d_ADP / self.ATP_ADP_ratio                    
+        return self.k_DT * self.K_d_atp / self.K_d_adp / self.atp_adp_ratio                    
     
     def gillespie(
         self, 
@@ -251,12 +251,12 @@ class TranslocationModel(ABC):
                          * self.kinetic_scheme.edges[u, v]['rate']())
         return velocity
     
-    def ATP_consumption_rate(self) -> float:
+    def atp_consumption_rate(self) -> float:
         """Return the ATP consumption rate of the translocation model."""
         r = 0
-        for u, v, ATP in self.kinetic_scheme.edges(data='ATP', 
+        for u, v, atp in self.kinetic_scheme.edges(data='ATP', 
                                                             default=0):
-            r += (ATP 
+            r += (atp 
                   * self.kinetic_scheme.nodes[u]['probability']() 
                   * self.kinetic_scheme.edges[u, v]['rate']())
     
@@ -468,9 +468,9 @@ class SC2R(TranslocationModel):
         k_down: Translocation down rate.
     """
 
-    def __init__(self, ATP_ADP_ratio: float = 10) -> None:
+    def __init__(self, atp_adp_ratio: float = 10) -> None:
         self.k_up = 1 # Translocation up rate
-        super().__init__(ATP_ADP_ratio)
+        super().__init__(atp_adp_ratio)
         #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     @property
@@ -479,7 +479,7 @@ class SC2R(TranslocationModel):
         return (
             self.k_h * self.k_up * self.k_DT
             / (self.k_s * self.k_TD)
-            * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio)
+            * (self.equilibrium_atp_adp_ratio / self.atp_adp_ratio)
         )
     
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
@@ -508,8 +508,8 @@ class SC2R(TranslocationModel):
 class SC2R2Loops(SC2R):
     """Sequential Clockwise/2-Residue Step, 2-Loops translocation model."""
 
-    def __init__(self, ATP_ADP_ratio: float = 10) -> None:
-        super().__init__(ATP_ADP_ratio)
+    def __init__(self, atp_adp_ratio: float = 10) -> None:
+        super().__init__(atp_adp_ratio)
         #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
@@ -535,12 +535,12 @@ class DiscSpiral(TranslocationModel):
         k_[extended/flat]_to_[flat/extended]_[up/down]
     """
 
-    def __init__(self, ATP_ADP_ratio: float = 10, n_protomers: int = 6) -> None:
+    def __init__(self, atp_adp_ratio: float = 10, n_protomers: int = 6) -> None:
         self.n_protomers = n_protomers
         self.k_extended_to_flat_up = 1 # Spiral->disc up translocation rate
         self.k_flat_to_extended_down = 1 # Disc->spiral down translocation rate
         self.k_flat_to_extended_up = 1 # Disc->spiral up translocation rate
-        super().__init__(ATP_ADP_ratio)
+        super().__init__(atp_adp_ratio)
         #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     @property
@@ -566,7 +566,7 @@ class DiscSpiral(TranslocationModel):
         return ((self.k_h * self.k_flat_to_extended_up * self.k_DT 
                  * self.k_extended_to_flat_up)
                 / (self.k_s * self.k_TD * self.k_flat_to_extended_down)
-                * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio))
+                * (self.equilibrium_atp_adp_ratio / self.atp_adp_ratio))
 
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
     ) -> DiGraph:
@@ -623,7 +623,7 @@ class DefectiveSC2R(SC2R):
     def __init__(
             self, 
             defect_factor: float = 0.1,
-            ATP_ADP_ratio: float = 10,
+            atp_adp_ratio: float = 10,
             n_protomers: int = 6
     ) -> None:
         """Initialize the defective translocation model.
@@ -631,12 +631,12 @@ class DefectiveSC2R(SC2R):
         Args:
             defect_factor: The factor by which the defective protomer hydrolisis
                 rate is smaller than the other protomers hydrolisis rate.
-            ATP_ADP_ratio: The ATP/ADP ratio.
+            atp_adp_ratio: The ATP/ADP ratio.
             n_protomers: The number of protomers.
         """
         self.defect_factor = defect_factor
         self.n_protomers = n_protomers
-        super().__init__(ATP_ADP_ratio)
+        super().__init__(atp_adp_ratio)
         # Redundant kinetic_scheme construction, but more explicit
         #self.kinetic_scheme = self._construct_kinetic_scheme()
 
@@ -651,7 +651,7 @@ class DefectiveSC2R(SC2R):
         return (
             (self.k_h**5 * self.k_h_defect)**(1/6) * self.k_up * self.k_DT
             / (self.k_s * self.k_TD)
-            * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio)
+            * (self.equilibrium_atp_adp_ratio / self.atp_adp_ratio)
         )
 
     def probabilities_defect_ignored(self) -> dict[str, float]:
@@ -751,7 +751,7 @@ class DefectiveDiscSpiral(DiscSpiral):
     def __init__(
             self, 
             defect_factor: float = 0.1, 
-            ATP_ADP_ratio: float = 10, 
+            atp_adp_ratio: float = 10, 
             n_protomers: int = 6
     ) -> None:
         """Initialize the defective translocation model.
@@ -761,7 +761,7 @@ class DefectiveDiscSpiral(DiscSpiral):
                 rate is smaller than the other protomers hydrolisis rate.
         """
         self.defect_factor = defect_factor
-        super().__init__(ATP_ADP_ratio, n_protomers)
+        super().__init__(atp_adp_ratio, n_protomers)
         # Redundant kinetic_scheme construction, but more explicit
         #self.kinetic_scheme = self._construct_kinetic_scheme() 
 
