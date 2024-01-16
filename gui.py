@@ -1,7 +1,7 @@
 from ipywidgets import GridspecLayout, Label, FloatText, HTMLMath
 
 
-class Gui():
+class GUI():
     """A GUI for the translocation model experiments.
 
     The GUI is a GridspecLayout of widgets. It contains widgets to control the 
@@ -33,41 +33,9 @@ class Gui():
         self.n_cols = 3
         self.grid = GridspecLayout(self.n_rows, self.n_cols)
         self.parameters = {}
-
-    def _add_parameter(
-        self,
-        row: int,
-        symbol: str,
-        desc: str,
-        value: float = 1.0,
-        is_constrained: bool = False
-    ) -> None:
-        """Add a parameter to the grid.
-
-        The parameter has a symbol, a value, and a description. If the parameter 
-        is not constrained, the value is a FloatText widget. If the parameter is
-        constrained, the value is a Label widget.
-
-        Args:
-            row: The row to add the parameter to.
-            symbol: The LaTeX symbol of the parameter.
-            desc: A description of the parameter.
-            value: The initial value of the parameter.
-            is_constrained: Whether the parameter is constrained by other parameters
-                in the model. If yes, the parameter is displayed as a label rather
-                than a float text.
-        """
-        if is_constrained:
-            parameter = Label(value=str(value))
-        else:
-            parameter = FloatText(value=value)
-        self.grid[row, 0] = HTMLMath(value=symbol)
-        self.grid[row, 1] = parameter
-        self.grid[row, 2] = Label(value=desc)
-        return parameter
             
     def add_general_parameters(self, row: int = 0) -> None:
-        """Add write/read interface for general parameters to the given grid.
+        """Add 9x3 write/read interface for general physical parameters.
 
         General parameters are the physical parameters common to all models.
         
@@ -137,7 +105,7 @@ class Gui():
         })
 
     def add_SC2R_parameters(self, row: int) -> None:
-        """Add write/read interface for SC2R parameters to the given grid.
+        """Add 3x3 write/read interface for SC2R parameters.
 
         Add inplace the parameters to the given grid and the {symbol: widget_value}
         parameters dictionary.
@@ -187,7 +155,7 @@ class Gui():
         })
 
     def add_disc_spiral_parameters(self, row: int) -> None:
-        """Add write/read interface for Disc-Spiral parameters to the given grid.
+        """Add 8x3 write/read interface for Disc-Spiral parameters.
 
         Add inplace the parameters to the given grid and the {symbol: widget_value}
         parameters dictionary.
@@ -213,7 +181,7 @@ class Gui():
             value="Disc-Spiral Model Physical Parameters")
         
         n_protomers = self._add_parameter(
-            row + 1, r"n_\text{protomers}", "Number of protomers")
+            row + 1, r"n_\text{protomers}", "Number of protomers", value=6)
         
         def compute_k_h_bar(): 
             return n_protomers.value * self.parameters["k_h"].value
@@ -288,3 +256,37 @@ class Gui():
             "k_flat_to_extended_up": k_flat_to_extended_up,
             "k_extended_to_flat_down": k_extended_to_flat_down,
         })
+
+    def _add_parameter(
+        self,
+        row: int,
+        symbol: str,
+        desc: str,
+        value: float = 1.0,
+        is_constrained: bool = False
+    ) -> None:
+        """Add a parameter to the grid.
+
+        The parameter has a symbol, a value, and a description. If the parameter 
+        is not constrained, the value is a FloatText widget. If the parameter is
+        constrained, the value is a Label widget.
+
+        Args:
+            row: The row to add the parameter to.
+            symbol: The LaTeX symbol of the parameter.
+            desc: A description of the parameter.
+            value: The initial value of the parameter.
+            is_constrained: Whether the parameter is constrained by other parameters
+                in the model. If yes, the parameter is displayed as a label rather
+                than a float text.
+        """
+        if is_constrained:
+            parameter = Label(value=str(value))
+        else:
+            parameter = FloatText(value=value)
+        self.grid[row, 0] = HTMLMath(value=symbol)
+        self.grid[row, 1] = parameter
+        self.grid[row, 2] = Label(value=desc)
+        return parameter
+
+
