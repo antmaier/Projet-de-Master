@@ -33,6 +33,7 @@ def trajectories():
     gui = GUI()
     gui.add_general_parameters()
     gui.add_sc2r_parameters()
+    #gui.add_disc_spiral_parameters()
 
     sc2r = SC2R()
 

@@ -4,6 +4,7 @@ from sys import maxsize
 
 
 # TODO update docstrings
+# TODO round values in constrained parameters
 class GUI():
     """A GUI for the translocation model experiments.
 
@@ -178,7 +179,7 @@ class GUI():
             'k_h_bar', "ꝁ_h", "Effective ATP hydrolysis rate", 
             value=compute_k_h_bar(), type='constrained')
         def change_k_h_bar(_):
-            k_h_bar.value = str(compute_k_h_bar())
+            self.parameters['k_h_bar'].value = str(compute_k_h_bar())
         self.parameters['n_protomers'].observe(change_k_h_bar, names='value')
         self.parameters['k_h'].observe(change_k_h_bar, names='value')
 
@@ -198,7 +199,7 @@ class GUI():
             "Effective disc->spiral down translocation rate", 
             value=compute_k_flat_to_extended_down_bar(), type='constrained')
         def change_k_flat_to_extended_down_bar(_):
-            k_flat_to_extended_down_bar.value = str(
+            self.parameters['k_flat_to_extended_down_bar'].value = str(
                 compute_k_flat_to_extended_down_bar())
         self.parameters['n_protomers'].observe(
             change_k_flat_to_extended_down_bar, names='value')
@@ -285,12 +286,12 @@ class GUI():
             max = 2 if type == 'float' else maxsize
         if type == 'float':
             parameter = FloatLogSlider(
-                value=value, min=min, max=max, 
-                description=symbol + ':')
+                value=value, min=min, max=max, description=symbol + ':', 
+                readout_format='.2f')
         elif type == 'int':
             parameter = IntSlider(
-                value=value, min=min, max=max, 
-                description=symbol + ':')
+                value=value, min=min, max=max, description=symbol + ':', 
+                readout_format='d')
         elif type == 'constrained':
             parameter = HTML(value=str(value), description=symbol + ':')
         else:
