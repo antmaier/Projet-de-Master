@@ -1,4 +1,5 @@
-from ipywidgets import GridspecLayout, Label, FloatText, HTMLMath
+from ipywidgets import GridspecLayout, BoundedFloatText, BoundedIntText, Label, HTML
+from sys import maxsize, float_info
 
 
 class GUI():
@@ -22,9 +23,9 @@ class GUI():
     of the corresponding method, e.g. Gui.add_general_parameters.__doc__.
 
     Example:
-        gui = Gui(9, 3)
-        gui.add_general_parameters()
-        gui.add_SC2R_parameters()
+        gui = Gui(12)
+        gui.add_general_parameters(0)
+        gui.add_SC2R_parameters(9)
         IPython.display.display(gui.grid)
     """
 
@@ -35,16 +36,16 @@ class GUI():
         self.parameters = {}
             
     def add_general_parameters(self, row: int = 0) -> None:
-        """Add 9x3 write/read interface for general physical parameters.
+        """Add write/read interface for general physical parameters (9 rows).
 
         General parameters are the physical parameters common to all models.
         
         Add inplace the parameters to the given grid and the 
         {symbol: widget_value} parameters dictionary.
         
-        The grid is a 9x3 grid of widgets starting at the given row and column 
-        and expanding downwards and to the right. Each parameter row contains a 
-        symbol, a value, and a description. 
+        The interface is 9 rows long starting at the given row and expanding 
+        downwards. 
+        Each parameter row contains a symbol, a value, and a description. 
         The rows are:
         0: "General physical parameters"
         1: ATP/ADP concentration ratio (ATP_ADP_ratio)
@@ -57,31 +58,31 @@ class GUI():
         7: ATP hydrolysis rate (k_h)
         8: ATP synthesis rate (k_s)
         """
-        self.grid[row, 0] = Label(value="General Physical Parameters")
+        self.grid[row, :] = Label(value="General Physical Parameters")
 
         ATP_ADP_ratio = self._add_parameter(
-            row + 1, r"\frac{[\text{ATP}]}{[\text{ADP}]}", 
-            "ATP/ADP concentration ratio", value=10.0)
+            row + 1, "[ATP]/[ADP]", "ATP/ADP concentration ratio", value=10.0)
         
         equilibrium_ATP_ADP_ratio = self._add_parameter(
-            row + 2, r"\frac{[\text{ATP}]}{[\text{ADP}]}\Bigr|_\text{eq.}", 
-            "Equilibrium ATP/ADP concentration ratio")
+            row + 2, "([ATP]/[ADP])|eq.", 
+            "Equilibrium ATP/ADP concentration ratio", value=0.01)
         
         K_d_ATP = self._add_parameter(
-            row + 3, r"K_d^\text{ATP}", "Protomer-ATP dissociation constant")
+            row + 3, "K_d^ATP", "Protomer-ATP dissociation constant", value=0.1)
         
         K_d_ADP = self._add_parameter(
-            row + 4, r"K_d^\text{ADP}", "Protomer-ADP dissociation constant")
+            row + 4, "K_d^ADP", "Protomer-ADP dissociation constant")
         
         k_DT = self._add_parameter(
-            row + 5, r"k_{DT}", "Effective ADP->ATP exchange rate")
+            row + 5, "k_DT", "Effective ADP->ATP exchange rate")
         
         def compute_k_TD():
-            return k_DT.value * K_d_ATP.value / K_d_ADP.value / ATP_ADP_ratio.value
+            return (k_DT.value * K_d_ATP.value / K_d_ADP.value 
+                    / ATP_ADP_ratio.value)
         k_TD = self._add_parameter(
-            row + 6, r"k_{TD}", "Effective ATP->ADP exchange rate "\
+            row + 6, "k_TD", "Effective ATP->ADP exchange rate "\
                 "(constrained by ATP<->ADP exchange model)", 
-            value=compute_k_TD(), is_constrained=True)
+            value=compute_k_TD(), type='constrained')
         def change_k_TD(_): 
             k_TD.value = str(compute_k_TD())
         k_DT.observe(change_k_TD, names='value')
@@ -89,9 +90,10 @@ class GUI():
         K_d_ADP.observe(change_k_TD, names='value')
         ATP_ADP_ratio.observe(change_k_TD, names='value')
 
-        k_h = self._add_parameter(row + 7, r"k_h", "ATP hydrolysis rate")
+        k_h = self._add_parameter(row + 7, "k_h", "ATP hydrolysis rate")
 
-        k_s = self._add_parameter(row + 8, r"k_s", "ATP synthesis rate")
+        k_s = self._add_parameter(
+            row + 8, "k_s", "ATP synthesis rate", value=0.1)
 
         self.parameters.update({
             "ATP_ADP_ratio": ATP_ADP_ratio,
@@ -105,26 +107,25 @@ class GUI():
         })
 
     def add_SC2R_parameters(self, row: int) -> None:
-        """Add 3x3 write/read interface for SC2R parameters.
+        """Add write/read interface for SC2R parameters (3 rows).
 
-        Add inplace the parameters to the given grid and the {symbol: widget_value}
-        parameters dictionary.
+        Add inplace the parameters to the given grid and the 
+        {symbol: widget_value} parameters dictionary.
 
         The parameters dictionary must contain the general parameters.
 
-        The gris is a 3x3 grid of widgets starting at the given row and column and
-        expanding downwards and to the right. Each parameter row contains a symbol, 
-        a value, and a description.
+        The interface is 3 rows long starting at the given row and expanding 
+        downwards. 
+        Each parameter row contains a symbol, a value, and a description.
         The rows are:
         0: "SC2R parameters"
         1: Translocation up rate (k_up)
         2: Translocation down rate (k_down) (constrained by the detailed balance)
         """
-        self.grid[row, 0] = Label(
+        self.grid[row, :] = Label(
             value="Sequential Clockwise/2-Residue Step Model Physical Parameters")
         
-        k_up = self._add_parameter(
-            row + 1, r"k_\uparrow", "Translocation up rate")
+        k_up = self._add_parameter(row + 1, "k_↑", "Translocation up rate")
         
         def compute_k_down():
             return (
@@ -136,9 +137,9 @@ class GUI():
                    / self.parameters["ATP_ADP_ratio"].value)
             )
         k_down = self._add_parameter(
-            row + 2, r"k_\downarrow", 
+            row + 2, "k_↓", 
             "Translocation down rate (constrained by the detailed balance)",
-            value=compute_k_down(), is_constrained=True)
+            value=compute_k_down(), type='constrained')
         def change_k_down(_):
             k_down.value = str(compute_k_down())
         k_up.observe(change_k_down, names='value')
@@ -155,16 +156,15 @@ class GUI():
         })
 
     def add_disc_spiral_parameters(self, row: int) -> None:
-        """Add 8x3 write/read interface for Disc-Spiral parameters.
+        """Add write/read interface for Disc-Spiral parameters (8 rows).
 
-        Add inplace the parameters to the given grid and the {symbol: widget_value}
-        parameters dictionary.
+        Add inplace the parameters to the given grid and the 
+        {symbol: widget_value} parameters dictionary.
 
         The parameters dictionary must contain the general parameters.
 
-        The gris is a 8x3 grid of widgets starting at the given row and column and
-        expanding downwards and to the right. Each parameter row contains a symbol, 
-        a value, and a description.
+        The gris is 8 rows long starting at the given row expanding downwards. 
+        Each parameter row contains a symbol, a value, and a description.
         The rows are:
         k_[extended/flat]_to_[flat/extended]_[up/down]
         0: "Disc-Spiral Model"
@@ -181,30 +181,30 @@ class GUI():
             value="Disc-Spiral Model Physical Parameters")
         
         n_protomers = self._add_parameter(
-            row + 1, r"n_\text{protomers}", "Number of protomers", value=6)
+            row + 1, "n_protomers", "Number of protomers", value=6, type='int', 
+            min=1)
         
         def compute_k_h_bar(): 
             return n_protomers.value * self.parameters["k_h"].value
         k_h_bar = self._add_parameter(
-            row + 2, r"\bar{k}_h", "Effective ATP hydrolysis rate", 
-            value=compute_k_h_bar(), is_constrained=True)
+            row + 2, "ꝁ_h", "Effective ATP hydrolysis rate", 
+            value=compute_k_h_bar(), type='constrained')
         def change_k_h_bar(_):
             k_h_bar.value = str(compute_k_h_bar())
         n_protomers.observe(change_k_h_bar, names='value')
         self.parameters['k_h'].observe(change_k_h_bar, names='value')
 
         k_extended_to_flat_up = self._add_parameter(
-            row + 3, r"k_↱", "Spiral->disc up translocation rate")
+            row + 3, "k_⮫", "Spiral->disc up translocation rate")
         
         k_flat_to_extended_down = self._add_parameter(
-            row + 4, r"k_⤵", "Disc->spiral down translocation rate")
+            row + 4, r"k_⮯", "Disc->spiral down translocation rate")
         
         def compute_k_flat_to_extended_down_bar():
             return n_protomers.value * k_flat_to_extended_down.value
         k_flat_to_extended_down_bar = self._add_parameter(
-            row + 5, r"\bar{k}_⤵", 
-            "Effective disc->spiral down translocation rate", 
-            value=compute_k_flat_to_extended_down_bar(), is_constrained=True)
+            row + 5, "ꝁ_⮯", "Effective disc->spiral down translocation rate", 
+            value=compute_k_flat_to_extended_down_bar(), type='constrained')
         def change_k_flat_to_extended_down_bar(_):
             k_flat_to_extended_down_bar.value = str(
                 compute_k_flat_to_extended_down_bar())
@@ -213,7 +213,7 @@ class GUI():
                                         names='value')
 
         k_flat_to_extended_up = self._add_parameter(
-            row + 6, r"k_⤴", "Disc->spiral up translocation rate")
+            row + 6, r"k_⮭", "Disc->spiral up translocation rate")
         
         def compute_k_extended_to_flat_down():
             return ((self.parameters["k_h"].value * k_flat_to_extended_up.value 
@@ -225,9 +225,9 @@ class GUI():
                     * (self.parameters["equilibrium_ATP_ADP_ratio"].value 
                        / self.parameters["ATP_ADP_ratio"].value))
         k_extended_to_flat_down = self._add_parameter(
-            row + 7, r"k_↳", "Spiral->disc down translocation rate "\
+            row + 7, r"k_⮩", "Spiral->disc down translocation rate "\
                 "(constrained by the detailed balance)",
-            value=compute_k_extended_to_flat_down(), is_constrained=True)
+            value=compute_k_extended_to_flat_down(), type='constrained')
         def change_k_extended_to_flat_down(_):
             k_extended_to_flat_down.value = str(compute_k_extended_to_flat_down())
         self.parameters['k_h'].observe(change_k_extended_to_flat_down, 
@@ -263,7 +263,8 @@ class GUI():
         symbol: str,
         desc: str,
         value: float = 1.0,
-        is_constrained: bool = False
+        type: str = 'float',
+        min: float = 0.0,
     ) -> None:
         """Add a parameter to the grid.
 
@@ -276,17 +277,28 @@ class GUI():
             symbol: The LaTeX symbol of the parameter.
             desc: A description of the parameter.
             value: The initial value of the parameter.
-            is_constrained: Whether the parameter is constrained by other parameters
-                in the model. If yes, the parameter is displayed as a label rather
-                than a float text.
+            type: The type of the parameter. Either 'float', 'int' or 
+                'constrained'.
+            min: The minimum value of the parameter. Not relevant if type is
+                'constrained'.
         """
-        if is_constrained:
-            parameter = Label(value=str(value))
+        type = type.lower()
+        if type == 'float':
+            parameter = BoundedFloatText(
+                value=value, min=min, max=float_info.max, 
+                description=symbol + ':')
+        elif type == 'int':
+            parameter = BoundedIntText(
+                value=value, min=min, max=maxsize, 
+                description=symbol + ':')
+        elif type == 'constrained':
+            parameter = HTML(value=str(value), description=symbol + ':')
+            #parameter = Label(value=str(value), description=symbol + ':')
         else:
-            parameter = FloatText(value=value)
-        self.grid[row, 0] = HTMLMath(value=symbol)
-        self.grid[row, 1] = parameter
-        self.grid[row, 2] = Label(value=desc)
+            raise ValueError(
+                "type must be either 'float', 'int' or 'constrained'")
+        self.grid[row, 0] = parameter
+        self.grid[row, 1:] = Label(value=desc)
         return parameter
 
 
