@@ -33,8 +33,9 @@ class TranslocationModel(ABC):
 
     A model is a subclass of TranslocationModel. It must implement the 
     _construct_kinetic_scheme method, which constructs the kinetic scheme of
-    the model, and then call it in the constructor to construct the attribute
-    self.kinetic_scheme. 
+    the model, and define its own parameters before calling the __super__
+    constructor. The kinetic scheme is then automatically constructed in the 
+    TranslocationModel class, accessible in the kinetic_scheme attribute.
 
     Physical parameters:
         ATP_ADP_ratio: The ATP/ADP ratio.
@@ -67,7 +68,7 @@ class TranslocationModel(ABC):
         self.k_h = 1
         self.k_s = 1
         
-        self.kinetic_scheme = None # TODO abstract attribute
+        self.kinetic_scheme = self._construct_kinetic_scheme() # None # TODO abstract attribute
         
     @property
     def ATP_ADP_ratio(self) -> float:
@@ -181,11 +182,11 @@ class TranslocationModel(ABC):
     def plot_position_evolution(
         self, 
         trajectory: pd.DataFrame | list[pd.DataFrame],
-        time_unit: str, 
+        time_unit: str = "a.u.", 
         position_unit: str = "Residues", 
+        title: str | None = None,
         kinetic_scheme_image_path: str | None = None, 
         ax: mpl.axes.Axes | None = None,
-        title: str | None = None,
     ) -> mpl.axes.Axes:
         """Plot the evolution of the position.
 
@@ -199,15 +200,14 @@ class TranslocationModel(ABC):
                 trajectory is plotted on the same axes.
             time_unit: Unit of the time (x-)axis
             position_unit: Unit of the position (y-)axis
+            title: The title of the plot. If None, no title is added.
             kinetic_scheme_image_path: If given, will add the image of the
                 kinetic scheme on the plot.
             ax: The axes where to plot. If None, a new axes is created.
-            title: The title of the plot. If None, no title is added.
 
         Returns:
             The axes with the plot.
         """
-
         if not ax:
             _, ax = plt.subplots()
         
@@ -460,8 +460,8 @@ class TranslocationModel(ABC):
         return mean, variance
     
 
-class SequentialClockwise2ResidueStep(TranslocationModel):
-    """Sequential Clockwise/2-Residue Step.
+class SC2R(TranslocationModel):
+    """Sequential Clockwise/2-Residue Step, 1-Loop translocation model.
     
     Physical parameters:
         k_up: Translocation up rate.
@@ -469,8 +469,9 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
     """
 
     def __init__(self, ATP_ADP_ratio: float = 10) -> None:
-        super().__init__(ATP_ADP_ratio)
         self.k_up = 1 # Translocation up rate
+        super().__init__(ATP_ADP_ratio)
+        #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     @property
     def k_down(self) -> float:
@@ -480,15 +481,7 @@ class SequentialClockwise2ResidueStep(TranslocationModel):
             / (self.k_s * self.k_TD)
             * (self.equilibrium_ATP_ADP_ratio / self.ATP_ADP_ratio)
         )
-
-
-class SC2R1Loop(SequentialClockwise2ResidueStep): # TODO Rename SC2R and move to superclass, check if it works with defective model
-    """Sequential Clockwise/2-Residue Step, 1-Loop translocation model."""
-
-    def __init__(self, ATP_ADP_ratio: float = 10) -> None:
-        super().__init__(ATP_ADP_ratio)
-        self.kinetic_scheme = self._construct_kinetic_scheme()
-
+    
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
     ) -> DiGraph:
         if not kinetic_scheme:
@@ -512,36 +505,21 @@ class SC2R1Loop(SequentialClockwise2ResidueStep): # TODO Rename SC2R and move to
         return kinetic_scheme
     
 
-class SC2R2Loops(SequentialClockwise2ResidueStep):
+class SC2R2Loops(SC2R):
     """Sequential Clockwise/2-Residue Step, 2-Loops translocation model."""
 
     def __init__(self, ATP_ADP_ratio: float = 10) -> None:
         super().__init__(ATP_ADP_ratio)
-        self.kinetic_scheme = self._construct_kinetic_scheme()
+        #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
     ) -> DiGraph:
         if not kinetic_scheme:
             kinetic_scheme = DiGraph()
-        kinetic_scheme.add_nodes_from([
-            ('TTT', {'probability': 
-                        lambda: self._compute_probabilities()['TTT']}),
-            ('DTT', {'probability':
-                        lambda: self._compute_probabilities()['DTT']}),
-            ('TTD', {'probability': 
-                        lambda: self._compute_probabilities()['TTD']}),
-            ('DTD', {'probability': 
-                        lambda: self._compute_probabilities()['DTD']})
-        ])
+        kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
+        kinetic_scheme.add_node(
+            'DTD', probability = lambda: self._compute_probabilities()['DTD'])
         kinetic_scheme.add_edges_from([
-            # Main loop
-            ('TTT', 'DTT', {'rate': lambda: self.k_h, 'ATP': -1}),
-            ('DTT', 'TTT', {'rate': lambda: self.k_s, 'ATP': 1}),
-            ('DTT', 'TTD', {'rate': lambda: self.k_up, 'position': 2}),
-            ('TTD', 'DTT', {'rate': lambda: self.k_down, 'position': -2}),
-            ('TTD', 'TTT', {'rate': lambda: self.k_DT}),
-            ('TTT', 'TTD', {'rate': lambda: self.k_TD}),
-            # Second loop
             ('DTT', 'DTD', {'rate': lambda: self.k_TD}),
             ('DTD', 'DTT', {'rate': lambda: self.k_DT}),
             ('DTD', 'TTD', {'rate': lambda: self.k_s, 'ATP': 1}),
@@ -558,14 +536,12 @@ class DiscSpiral(TranslocationModel):
     """
 
     def __init__(self, ATP_ADP_ratio: float = 10, n_protomers: int = 6) -> None:
-        super().__init__(ATP_ADP_ratio)
-
         self.n_protomers = n_protomers
         self.k_extended_to_flat_up = 1 # Spiral->disc up translocation rate
         self.k_flat_to_extended_down = 1 # Disc->spiral down translocation rate
         self.k_flat_to_extended_up = 1 # Disc->spiral up translocation rate
-
-        self.kinetic_scheme = self._construct_kinetic_scheme()
+        super().__init__(ATP_ADP_ratio)
+        #self.kinetic_scheme = self._construct_kinetic_scheme()
     
     @property
     def k_h_bar(self) -> float:
@@ -625,7 +601,7 @@ class DiscSpiral(TranslocationModel):
         return kinetic_scheme
 
 
-class DefectiveSC2R(SequentialClockwise2ResidueStep):
+class DefectiveSC2R(SC2R):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
     
     Single-loop-like translocation model with one defective protomer. The 
@@ -658,10 +634,11 @@ class DefectiveSC2R(SequentialClockwise2ResidueStep):
             ATP_ADP_ratio: The ATP/ADP ratio.
             n_protomers: The number of protomers.
         """
-        super().__init__(ATP_ADP_ratio)
         self.defect_factor = defect_factor
         self.n_protomers = n_protomers
-        self.kinetic_scheme = self._construct_kinetic_scheme()
+        super().__init__(ATP_ADP_ratio)
+        # Redundant kinetic_scheme construction, but more explicit
+        #self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
     def k_h_defect(self) -> float:
@@ -783,10 +760,10 @@ class DefectiveDiscSpiral(DiscSpiral):
             defect_factor: The factor by which the defective protomer hydrolisis
                 rate is smaller than the other protomers hydrolisis rate.
         """
-        super().__init__(ATP_ADP_ratio, n_protomers)
         self.defect_factor = defect_factor
+        super().__init__(ATP_ADP_ratio, n_protomers)
         # Redundant kinetic_scheme construction, but more explicit
-        self.kinetic_scheme = self._construct_kinetic_scheme() 
+        #self.kinetic_scheme = self._construct_kinetic_scheme() 
 
     @property
     def k_h_defect(self) -> float:
