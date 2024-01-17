@@ -81,28 +81,29 @@ class Experiment(ABC):
 
 class VelocityVSATPADPRatio(Experiment):
     def __init__(self):
-        self._models = [SC2R(), DiscSpiral()]
+        self._sc2r = SC2R()
+        self._disc_spiral = DiscSpiral()
         super().__init__()
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
-            'equilibrium_atp_adp_ratio': DefaultFloatLogSlider(
+            'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
                 value=0.01, description="([ATP]/[ADP])|eq.:"),
-            'K_d_atp': DefaultFloatLogSlider(value=0.1, description="K_d^ATP:"),
-            'K_d_adp': DefaultFloatLogSlider(description="K_d^ADP:"),
-            'k_DT': DefaultFloatLogSlider(description="k_DT:"),
-            'k_h': DefaultFloatLogSlider(description="k_h:"),
-            'k_s': DefaultFloatLogSlider(value=0.1, description="k_s:"),
-            'k_up': DefaultFloatLogSlider(description="k_↑:"),
-            'n_protomers': DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': DefaultFloatLogSlider(description="k_⮭:"),
+            'K_d_atp': _DefaultFloatLogSlider(value=0.1, description="K_d^ATP:"),
+            'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
+            'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
+            'k_h': _DefaultFloatLogSlider(description="k_h:"),
+            'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
+            'k_up': _DefaultFloatLogSlider(description="k_↑:"),
+            'n_protomers': _DefaultIntSlider(description="n_protomers:"),
+            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
     
     def _construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
-            'k_TD': HTML(description="k_TD:"),
+            #'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
             'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
@@ -123,9 +124,9 @@ class VelocityVSATPADPRatio(Experiment):
                 HTML(value="Protomer-ADP dissociation constant")]),
             HBox([self._free_parameters['k_DT'],
                 HTML(value="Effective ADP->ATP exchange rate")]),
-            HBox([self._constrained_parameters['k_TD'],
-                HTML(value="Effective ATP->ADP exchange rate "\
-                    "(constrained by Protomer-ATP/ADP exchange model)")]),
+            #HBox([self._constrained_parameters['k_TD'],
+            #    HTML(value="Effective ATP->ADP exchange rate "\
+            #        "(constrained by Protomer-ATP/ADP exchange model)")]),
             HBox([self._free_parameters['k_h'],
                 HTML(value="ATP Hydrolysis rate")]),
             HBox([self._free_parameters['k_s'],
@@ -162,15 +163,16 @@ class VelocityVSATPADPRatio(Experiment):
         return gui
     
     def _run(self) -> None:
-        self._update_models_free_parameters(self._models, self._free_parameters)
-        self._update_gui_constrained_parameters(self._models, 
+        models = [self._sc2r, self._disc_spiral]
+        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_gui_constrained_parameters(models, 
                                                 self._constrained_parameters)
         
         atp_adp_ratios = (np.logspace(-2, 2, 100) 
-                          * self._models[0].equilibrium_atp_adp_ratio)
-        velocities = {model: [] for model in self._models}
+                          * models[0].equilibrium_atp_adp_ratio) # Equal for both models
+        velocities = {model: [] for model in models}
         for atp_adp_ratio in atp_adp_ratios:
-            for model in self._models:
+            for model in models:
                 model.atp_adp_ratio = atp_adp_ratio
                 velocities[model].append(model.average_velocity())
 
@@ -184,17 +186,30 @@ class VelocityVSATPADPRatio(Experiment):
             fig.canvas.toolbar_visible = False
             ax = fig.add_subplot(111)
 
-            for model in self._models:
-                ax.plot(atp_adp_ratios, velocities[model], 
-                        label=model.__class__.__name__)
+            # Plot velocities vs [ATP]/[ADP]
+            ax.plot(atp_adp_ratios / self._sc2r.equilibrium_atp_adp_ratio,
+                    velocities[self._sc2r],
+                    label='SC/2R',
+                    color='#DDAA33')
+            ax.plot(atp_adp_ratios / self._disc_spiral.equilibrium_atp_adp_ratio,
+                    velocities[self._disc_spiral],
+                    label='Disc-Spiral',
+                    color='#004488')
+            # Plot grey bars to highlight that <v> = 0 when 
+            # [ATP]/[ADP] = ([ATP]/[ADP])|eq.
+            ax.axhline(0, xmax=0.5, color='#BBBBBB', linestyle='--', zorder=0)
+            ymin, ymax = ax.get_ylim()
+            y0 = -ymin / (ymax - ymin)
+            ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB', linestyle='--', zorder=0)
+            
             ax.set_xscale('log')
-            ax.set_xlabel("[ATP]/[ADP]")
-            ax.set_ylabel("Average velocity [Residue * k]")
+            ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
+            ax.set_ylabel("<v>[Residue ∙ k]")
             ax.legend()
             plt.show()
 
 
-class DefaultFloatLogSlider(FloatLogSlider):
+class _DefaultFloatLogSlider(FloatLogSlider):
     """FloatLogSlider with default values."""
     def __init__(self, 
                 value: float = 1.0,
@@ -209,7 +224,7 @@ class DefaultFloatLogSlider(FloatLogSlider):
             continuous_update=continuous_update, *args, **kwargs)
         
 
-class DefaultIntSlider(IntSlider):
+class _DefaultIntSlider(IntSlider):
     """IntSlider with default values."""
     def __init__(self, 
                 value: int = 6,
