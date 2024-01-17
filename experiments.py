@@ -1,4 +1,4 @@
-from translocation_model import TranslocationModel, \
+from translocation_models import TranslocationModel, \
     SC2R, SC2R2Loops, DefectiveSC2R, \
     DiscSpiral, DefectiveDiscSpiral
 
@@ -105,7 +105,9 @@ class Experiment(ABC):
                     widget.value = str(round(getattr(model, name), 2))
                     break
 
-
+# TODO add slider to chose range order of magnitude of ATP/ADP ratio
+#   Maybe put it without proportional to equilibrium_atp_adp_ratio
+# TODO add info about what is the range of k_TD depending on ATP/ADP ratio
 class VelocityVSATPADPRatio(Experiment):
     """Velocity vs [ATP]/[ADP] experiment.
 
@@ -120,8 +122,11 @@ class VelocityVSATPADPRatio(Experiment):
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
+            # Source for ATP/ADP ratio:
+            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
-                value=0.01, description="([ATP]/[ADP])|eq.:"),
+                value=1e-5, min=-7, max=-3, readout_format='.1e',
+                description="([ATP]/[ADP])|eq.:"),
             'K_d_atp': _DefaultFloatLogSlider(
                 value=0.1, description="K_d^ATP:"),
             'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
