@@ -11,9 +11,36 @@ import matplotlib.pyplot as plt
 
 from abc import ABC, abstractmethod
 
-# TODO Add docstrings, and give example of how to extend library
-#   In particular explain what should appear in _run
+
 class Experiment(ABC):
+    """Base class for experiments.
+    
+    An experiment contains typically a GUI and one or more plots. The GUI 
+    contains widgets that can be used to change the parameters of the model.
+    The plots are dynamically updated when the user changes the parameters.
+
+    To create a new experiment, inherit from this class and implement the
+    following methods:
+    - _construct_free_parameters: construct free parameters widgets
+    - _construct_constrained_parameters: construct constrained parameters widgets
+    - _construct_gui: construct GUI
+    - _run: run experiment
+
+    The _run method should update the models free parameters from the free
+    parameters widgets, and update the constrained parameters widgets from the
+    model. It should also update the plots.
+
+    The subclass constructor should call the superclass constructor AFTER 
+    defining the attributes needed for the experiment (typically the 
+    translocation models). The parameters are not defined in the constructor
+    but they are automatically constructed by the super class constructor via
+    the _construct_free_parameters and _construct_constrained_parameters.
+
+    Free parameters are parameters that can be changed by the user, using for
+    example sliders. Constrained parameters are parameters that are computed
+    from free parameters, and are displayed using HTML widgets for example.
+    """
+
     def __init__(self):
         self._free_parameters = self._construct_free_parameters()
         self._constrained_parameters = self._construct_constrained_parameters()
@@ -80,6 +107,12 @@ class Experiment(ABC):
 
 
 class VelocityVSATPADPRatio(Experiment):
+    """Velocity vs [ATP]/[ADP] experiment.
+
+    Plot the average velocity of the two SC2R and Disc-Spiral models for various
+    values of [ATP]/[ADP] ratio.
+    """
+
     def __init__(self):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
@@ -89,7 +122,8 @@ class VelocityVSATPADPRatio(Experiment):
         return {
             'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
                 value=0.01, description="([ATP]/[ADP])|eq.:"),
-            'K_d_atp': _DefaultFloatLogSlider(value=0.1, description="K_d^ATP:"),
+            'K_d_atp': _DefaultFloatLogSlider(
+                value=0.1, description="K_d^ATP:"),
             'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
             'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
             'k_h': _DefaultFloatLogSlider(description="k_h:"),
@@ -168,7 +202,7 @@ class VelocityVSATPADPRatio(Experiment):
         self._update_gui_constrained_parameters(models, 
                                                 self._constrained_parameters)
         
-        atp_adp_ratios = (np.logspace(-2, 2, 100) 
+        atp_adp_ratios = (np.logspace(-1, 3, 100) 
                           * models[0].equilibrium_atp_adp_ratio) # Equal for both models
         velocities = {model: [] for model in models}
         for atp_adp_ratio in atp_adp_ratios:
@@ -195,14 +229,23 @@ class VelocityVSATPADPRatio(Experiment):
                     velocities[self._disc_spiral],
                     label='Disc-Spiral',
                     color='#004488')
+            ax.set_xscale('log')
+
             # Plot grey bars to highlight that <v> = 0 when 
             # [ATP]/[ADP] = ([ATP]/[ADP])|eq.
-            ax.axhline(0, xmax=0.5, color='#BBBBBB', linestyle='--', zorder=0)
+            # (log_x1, y0) is the point where the grey bars intersect if the 
+            # axes goes from 0 (far left/bottom) to 1 (far right/top).
+            # Calculations need to be done after the plotting is done since it
+            # depends on the limits of the axes, which are automatically 
+            # determined by matplotlib.
+            log_xmin, log_xmax = np.log10(ax.get_xlim())
             ymin, ymax = ax.get_ylim()
+            # Calculations need to be done after the log scale is applied
+            log_x1 = (np.log10(1) - log_xmin) / (log_xmax - log_xmin)
             y0 = -ymin / (ymax - ymin)
+            ax.axhline(0, xmin=log_xmin, xmax=log_x1, color='#BBBBBB', linestyle='--', zorder=0)
             ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB', linestyle='--', zorder=0)
             
-            ax.set_xscale('log')
             ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
             ax.set_ylabel("<v>[Residue ∙ k]")
             ax.legend()

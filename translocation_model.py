@@ -10,6 +10,7 @@ from PIL import Image
 from abc import ABC, abstractmethod
 
 
+# TODO rename file to translocation_models.py
 class TranslocationModel(ABC):
     """A translocation model defined by a kinetic scheme.
     
