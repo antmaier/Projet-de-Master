@@ -254,7 +254,9 @@ class VelocityVSATPADPRatio(Experiment):
             ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
             ax.set_ylabel("<v>[Residue ∙ k]")
             ax.legend()
-            plt.show()
+            plt.show() # TODO Indicate that THIS IS IMPORTANT otherwise plot is 
+            # not in the gui, but below and is not updated but instead a new 
+            # plot is displayed everytime a value changes
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):

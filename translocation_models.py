@@ -280,11 +280,10 @@ class TranslocationModel(ABC):
         return kinetic_scheme
     
     def analytical_attribute_stats(
-            self,
-            edge_attribute: str,
-            timestamps: float | list[float],
-            confidence_level: float = 0.95,
-
+        self,
+        edge_attribute: str,
+        timestamps: float | list[float],
+        confidence_level: float = 0.95,
     ) -> pd.DataFrame:
         """Return mean, std and confidence interval of the edge attribute.
         
@@ -316,7 +315,9 @@ class TranslocationModel(ABC):
         mean = timestamps * mean
         var = timestamps * var
         std = np.sqrt(var)
-        lower_bound, upper_bound = norm.interval(confidence_level, mean, std)
+        q_lower, q_upper = norm.interval(confidence_level)
+        lower_bound = mean + q_lower * std
+        upper_bound = mean + q_upper * std
         return pd.DataFrame({
             'timestamp': timestamps,
             'mean': mean,
