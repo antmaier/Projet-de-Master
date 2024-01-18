@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 
 class Experiment(ABC):
     """Base class for experiments.
-    
+
     An experiment contains typically a GUI and one or more plots. The GUI 
     contains widgets that can be used to change the parameters of the model.
     The plots are dynamically updated when the user changes the parameters.
@@ -54,7 +54,7 @@ class Experiment(ABC):
     @abstractmethod
     def _construct_free_parameters(self) -> dict[str, Widget]:
         """Construct free parameters widgets.
-        
+
         Free parameters are parameters that can be changed by the user.
         """
         pass
@@ -62,7 +62,7 @@ class Experiment(ABC):
     @abstractmethod
     def _construct_constrained_parameters(self) -> dict[str, Widget]:
         """Construct constrained parameters widgets.
-        
+
         Constrained parameters are parameters that are computed from free
         parameters.
         """
@@ -108,6 +108,8 @@ class Experiment(ABC):
 # TODO add slider to chose range order of magnitude of ATP/ADP ratio
 #   Maybe put it without proportional to equilibrium_atp_adp_ratio
 # TODO add info about what is the range of k_TD depending on ATP/ADP ratio
+
+
 class VelocityVSATPADPRatio(Experiment):
     """Velocity vs [ATP]/[ADP] experiment.
 
@@ -139,76 +141,76 @@ class VelocityVSATPADPRatio(Experiment):
             'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
-    
+
     def _construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
-            #'k_TD': HTML(description="k_TD:"),
+            # 'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
             'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
-    
+
     def _construct_gui(self) -> Widget:
         gui_plot = Output()
         gui_parameters = VBox([
             HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
 
             HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'], 
-                HTML(value="Equilibrium ATP/ADP concentration ratio")]),
+            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                  HTML(value="Equilibrium ATP/ADP concentration ratio")]),
             HBox([self._free_parameters['K_d_atp'],
-                HTML(value="Protomer-ATP dissociation constant")]),
+                  HTML(value="Protomer-ATP dissociation constant")]),
             HBox([self._free_parameters['K_d_adp'],
-                HTML(value="Protomer-ADP dissociation constant")]),
+                  HTML(value="Protomer-ADP dissociation constant")]),
             HBox([self._free_parameters['k_DT'],
-                HTML(value="Effective ADP->ATP exchange rate")]),
-            #HBox([self._constrained_parameters['k_TD'],
+                  HTML(value="Effective ADP->ATP exchange rate")]),
+            # HBox([self._constrained_parameters['k_TD'],
             #    HTML(value="Effective ATP->ADP exchange rate "\
             #        "(constrained by Protomer-ATP/ADP exchange model)")]),
             HBox([self._free_parameters['k_h'],
-                HTML(value="ATP Hydrolysis rate")]),
+                  HTML(value="ATP Hydrolysis rate")]),
             HBox([self._free_parameters['k_s'],
-                HTML(value="ATP Synthesis rate")]),
+                  HTML(value="ATP Synthesis rate")]),
 
             HTML(value="<b>SC2R Model Physical Parameters</b>"),
             HBox([self._free_parameters['k_up'],
-                HTML(value="Translocation up rate")]),
+                  HTML(value="Translocation up rate")]),
             HBox([self._constrained_parameters['k_down'],
-                HTML(value="Translocation down rate "\
-                    "(constrained by detailed balance)")]),
+                  HTML(value="Translocation down rate "\
+                       "(constrained by detailed balance)")]),
 
             HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
             HBox([self._free_parameters['n_protomers'],
-                HTML(value="Number of protomers")]),
+                  HTML(value="Number of protomers")]),
             HBox([self._constrained_parameters['k_h_bar'],
-                HTML(value="Effective ATP hydrolysis rate")]),
+                  HTML(value="Effective ATP hydrolysis rate")]),
             HBox([self._free_parameters['k_extended_to_flat_up'],
-                HTML(value="Spiral->disc up translocation rate")]),
+                  HTML(value="Spiral->disc up translocation rate")]),
             HBox([self._free_parameters['k_flat_to_extended_down'],
-                HTML(value="Disc->spiral down translocation rate")]),
+                  HTML(value="Disc->spiral down translocation rate")]),
             HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
-                HTML(value="Effective disc->spiral down translocation rate")]),
+                  HTML(value="Effective disc->spiral down translocation rate")]),
             HBox([self._free_parameters['k_flat_to_extended_up'],
-                HTML(value="Disc->spiral up translocation rate")]),
+                  HTML(value="Disc->spiral up translocation rate")]),
             HBox([self._constrained_parameters['k_extended_to_flat_down'],
-                HTML(value="Spiral->disc down rate "\
-                        "(constrained by detailed balance)")]),
+                  HTML(value="Spiral->disc down rate "\
+                       "(constrained by detailed balance)")]),
         ])
 
-        gui = HBox([gui_plot, gui_parameters], 
+        gui = HBox([gui_plot, gui_parameters],
                    layout=Layout(align_items='center'))
-        
+
         return gui
-    
+
     def _run(self) -> None:
         models = [self._sc2r, self._disc_spiral]
         self._update_models_free_parameters(models, self._free_parameters)
-        self._update_gui_constrained_parameters(models, 
+        self._update_gui_constrained_parameters(models,
                                                 self._constrained_parameters)
-        
-        atp_adp_ratios = (np.logspace(-1, 3, 100) 
-                          * models[0].equilibrium_atp_adp_ratio) # Equal for both models
+
+        atp_adp_ratios = (np.logspace(-1, 3, 100)
+                          * models[0].equilibrium_atp_adp_ratio)  # Equal for both models
         velocities = {model: [] for model in models}
         for atp_adp_ratio in atp_adp_ratios:
             for model in models:
@@ -236,54 +238,58 @@ class VelocityVSATPADPRatio(Experiment):
                     color='#004488')
             ax.set_xscale('log')
 
-            # Plot grey bars to highlight that <v> = 0 when 
+            # Plot grey bars to highlight that <v> = 0 when
             # [ATP]/[ADP] = ([ATP]/[ADP])|eq.
-            # (log_x1, y0) is the point where the grey bars intersect if the 
+            # (log_x1, y0) is the point where the grey bars intersect if the
             # axes goes from 0 (far left/bottom) to 1 (far right/top).
             # Calculations need to be done after the plotting is done since it
-            # depends on the limits of the axes, which are automatically 
+            # depends on the limits of the axes, which are automatically
             # determined by matplotlib.
             log_xmin, log_xmax = np.log10(ax.get_xlim())
             ymin, ymax = ax.get_ylim()
             # Calculations need to be done after the log scale is applied
             log_x1 = (np.log10(1) - log_xmin) / (log_xmax - log_xmin)
             y0 = -ymin / (ymax - ymin)
-            ax.axhline(0, xmin=log_xmin, xmax=log_x1, color='#BBBBBB', linestyle='--', zorder=0)
-            ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB', linestyle='--', zorder=0)
-            
+            ax.axhline(0, xmin=log_xmin, xmax=log_x1,
+                       color='#BBBBBB', linestyle='--', zorder=0)
+            ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB',
+                       linestyle='--', zorder=0)
+
             ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
             ax.set_ylabel("<v>[Residue ∙ k]")
             ax.legend()
-            plt.show() # TODO Indicate that THIS IS IMPORTANT otherwise plot is 
-            # not in the gui, but below and is not updated but instead a new 
+            plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
+            # not in the gui, but below and is not updated but instead a new
             # plot is displayed everytime a value changes
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):
     """FloatLogSlider with default values."""
-    def __init__(self, 
-                value: float = 1.0,
-                min: float = -2,
-                max: float = 2,
-                readout_format: str = '.2f',
-                continuous_update: bool = False,
-                *args, 
-                **kwargs):
+
+    def __init__(self,
+                 value: float = 1.0,
+                 min: float = -2,
+                 max: float = 2,
+                 readout_format: str = '.2f',
+                 continuous_update: bool = False,
+                 *args,
+                 **kwargs):
         super().__init__(
-            value=value, min=min, max=max, readout_format=readout_format, 
+            value=value, min=min, max=max, readout_format=readout_format,
             continuous_update=continuous_update, *args, **kwargs)
-        
+
 
 class _DefaultIntSlider(IntSlider):
     """IntSlider with default values."""
-    def __init__(self, 
-                value: int = 6,
-                min: int = 1,
-                max: int = 10,
-                readout_format: str = 'd',
-                continuous_update: bool = False,
-                *args, 
-                **kwargs):
+
+    def __init__(self,
+                 value: int = 6,
+                 min: int = 1,
+                 max: int = 10,
+                 readout_format: str = 'd',
+                 continuous_update: bool = False,
+                 *args,
+                 **kwargs):
         super().__init__(
-            value=value, min=min, max=max, readout_format=readout_format, 
+            value=value, min=min, max=max, readout_format=readout_format,
             continuous_update=continuous_update, *args, **kwargs)
