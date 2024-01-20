@@ -9,6 +9,9 @@ from PIL import Image
 
 from abc import ABC, abstractmethod
 
+# TODO when doing examples or docstring, emphasis that node/edge attributes are FUNCTIONS not values
+# and then we have to call them with () to get the value
+# TODO modify detailed balance equations to avoid atp_adp_ratio to explicitely appear
 
 class TranslocationModel(ABC):
     """A translocation model defined by a kinetic scheme.
@@ -57,7 +60,8 @@ class TranslocationModel(ABC):
     """
 
     def __init__(self, atp_adp_ratio: float = 10,):
-        self._atp_adp_ratio = atp_adp_ratio
+        # (Equilibrium) ATP/ADP concentration ratio
+        self.atp_adp_ratio = atp_adp_ratio
         self.equilibrium_atp_adp_ratio = 1
         # Protomer-ATP/ADP dissociation constants
         self.K_d_atp = 1
@@ -71,16 +75,16 @@ class TranslocationModel(ABC):
         # None # TODO abstract attribute
         self.kinetic_scheme = self._construct_kinetic_scheme()
 
-    @property
-    def atp_adp_ratio(self) -> float:
-        """ATP/ADP concentration ratio."""
-        return self._atp_adp_ratio
+    #@property
+    #def atp_adp_ratio(self) -> float:
+    #    """ATP/ADP concentration ratio."""
+    #    return self._atp_adp_ratio
 
-    @atp_adp_ratio.setter
-    def atp_adp_ratio(self, value: float) -> None:
-        if value < 0:
-            raise ValueError("The ATP/ADP ratio must be nonnegative.")
-        self._atp_adp_ratio = value
+    #@atp_adp_ratio.setter
+    #def atp_adp_ratio(self, value: float) -> None:
+    #    if value < 0:
+    #        raise ValueError("The ATP/ADP ratio must be nonnegative.")
+    #    self._atp_adp_ratio = value
 
     @property
     def k_TD(self) -> float:
