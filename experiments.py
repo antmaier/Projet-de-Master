@@ -107,10 +107,14 @@ class Experiment(ABC):
                     widget.value = str(round(getattr(model, name), 2))
                     break
 
-# TODO add info about what is the range of k_TD depending on ATP/ADP ratio
-
-
+# TODO add ATP consumption rate in legend
 class SC2RVSDiscSpiral(Experiment):
+    """SC/2R vs Disc-Spiral comparison.
+    
+    Plot trajectories, average position and std (analytical and/or emprirical)
+    for both models.
+    """
+
     def __init__(self):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
@@ -267,8 +271,8 @@ class SC2RVSDiscSpiral(Experiment):
         gui_plot = self._gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
-            plt.close('SC2RDiscSpiralComparison')
-            fig = plt.figure('SC2RDiscSpiralComparison')
+            plt.close('SC2RVSDiscSpiral')
+            fig = plt.figure('SC2RVSDiscSpiral')
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -484,8 +488,9 @@ class VelocityVSATPADPRatio(Experiment):
         return {
             # Source for ATP/ADP ratio:
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
-            'ratio_range': IntRangeSlider(
-                value=[1, 4], min=-2, max=6, description="O(([ATP]/[ADP])/([ATP]/[ADP])|eq.)"),
+            'ratio_magnitude_range': IntRangeSlider(
+                value=[1, 4], min=-2, max=6, continuous_update=False,
+                description="O(([ATP]/[ADP])/([ATP]/[ADP])|eq.):"),
             'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
                 value=1e-5, min=-7, max=-3, readout_format='.1e',
                 description="([ATP]/[ADP])|eq.:"),
@@ -504,7 +509,7 @@ class VelocityVSATPADPRatio(Experiment):
 
     def _construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
-            # 'k_TD': HTML(description="k_TD:"),
+            'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
             'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
@@ -517,7 +522,7 @@ class VelocityVSATPADPRatio(Experiment):
             HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
 
             HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['ratio_range'],
+            HBox([self._free_parameters['ratio_magnitude_range'],
                   HTML(value="(ATP/ADP)/([ATP]/[ADP])|eq. orders of magnitude")]),
             HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
                   HTML(value="Equilibrium ATP/ADP concentration ratio")]),
@@ -527,9 +532,10 @@ class VelocityVSATPADPRatio(Experiment):
                   HTML(value="Protomer-ADP dissociation constant")]),
             HBox([self._free_parameters['k_DT'],
                   HTML(value="Effective ADP->ATP exchange rate")]),
-            # HBox([self._constrained_parameters['k_TD'],
-            #    HTML(value="Effective ATP->ADP exchange rate "\
-            #        "(constrained by Protomer-ATP/ADP exchange model)")]),
+            HBox([self._constrained_parameters['k_TD'],
+                  HTML(value="Effective ATP->ADP exchange rate "\
+                    "(constrained by Protomer-ATP/ADP exchange model, " \
+                    "for current [ATP]/[ADP] range)")]),
             HBox([self._free_parameters['k_h'],
                   HTML(value="ATP Hydrolysis rate")]),
             HBox([self._free_parameters['k_s'],
@@ -570,8 +576,25 @@ class VelocityVSATPADPRatio(Experiment):
         self._update_models_free_parameters(models, self._free_parameters)
         self._update_gui_constrained_parameters(models,
                                                 self._constrained_parameters)
+        # Update k_TD for current range of ATP/ADP ratios
+        def k_TD_range(k_DT, K_d_atp, K_d_adp, atp_adp_ratio_min, 
+                       atp_adp_ratio_max):
+            """k_TD widget, value for min/max [ATP]/[ADP] range boundaries."""
+            k_TD_min = k_DT * K_d_atp / K_d_adp / atp_adp_ratio_max
+            k_TD_max = k_DT * K_d_atp / K_d_adp / atp_adp_ratio_min
+            return str(round(k_TD_max, 2)) + "●――●" + str(round(k_TD_min, 2))
+        self._constrained_parameters['k_TD'].value = k_TD_range(
+            self._free_parameters['k_DT'].value,
+            self._free_parameters['K_d_atp'].value,
+            self._free_parameters['K_d_adp'].value,
+            (10**self._free_parameters['ratio_magnitude_range'].value[0]
+             * self._free_parameters['equilibrium_atp_adp_ratio'].value),
+            (10**self._free_parameters['ratio_magnitude_range'].value[1]
+             * self._free_parameters['equilibrium_atp_adp_ratio'].value),
+        )
 
-        min, max = self._free_parameters['ratio_range'].value
+        # Velocity for all (ATP/ADP)/(ATP/ADP)|eq. values in range
+        min, max = self._free_parameters['ratio_magnitude_range'].value
         atp_adp_ratios = (np.logspace(min, max, 100)
                           * self._free_parameters['equilibrium_atp_adp_ratio'].value)
         velocities = {model: [] for model in models}
@@ -623,16 +646,14 @@ class VelocityVSATPADPRatio(Experiment):
                         linestyle='--', zorder=0, label="Cross (1, 0)")
 
             ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
-            ax.set_ylabel("<v>[Residue ∙ k]")
+            ax.set_ylabel("❬v❭ [Residue ∙ k]")
             ax.legend()
             plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
             # not in the gui, but below and is not updated but instead a new
             # plot is displayed everytime a value changes
 
 
-class VelocityVSPotential(Experiment):
-    def __init__(self):
-        self._sc2r = 
+
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):
