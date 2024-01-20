@@ -2,7 +2,7 @@ from translocation_models import TranslocationModel, \
     SC2R, SC2R2Loops, DefectiveSC2R, \
     DiscSpiral, DefectiveDiscSpiral
 
-from ipywidgets import Widget, FloatLogSlider, IntSlider, \
+from ipywidgets import Widget, FloatLogSlider, IntSlider, IntRangeSlider, \
     HBox, VBox, HTML, Output, Layout
 from IPython.display import display
 
@@ -107,165 +107,10 @@ class Experiment(ABC):
                     widget.value = str(round(getattr(model, name), 2))
                     break
 
-# TODO add slider to chose range order of magnitude of ATP/ADP ratio
-#   Maybe put it without proportional to equilibrium_atp_adp_ratio
 # TODO add info about what is the range of k_TD depending on ATP/ADP ratio
 
 
-class VelocityVSATPADPRatio(Experiment):
-    """Velocity vs [ATP]/[ADP] experiment.
-
-    Plot the average velocity of the two SC2R and Disc-Spiral models for various
-    values of [ATP]/[ADP] ratio.
-    """
-
-    def __init__(self):
-        self._sc2r = SC2R()
-        self._disc_spiral = DiscSpiral()
-        super().__init__()
-
-    def _construct_free_parameters(self) -> dict[str, Widget]:
-        return {
-            # Source for ATP/ADP ratio:
-            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
-            'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
-                value=1e-5, min=-7, max=-3, readout_format='.1e',
-                description="([ATP]/[ADP])|eq.:"),
-            'K_d_atp': _DefaultFloatLogSlider(
-                value=0.1, description="K_d^ATP:"),
-            'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
-            'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
-            'k_h': _DefaultFloatLogSlider(description="k_h:"),
-            'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
-            'k_up': _DefaultFloatLogSlider(description="k_↑:"),
-            'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
-        }
-
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
-        return {
-            # 'k_TD': HTML(description="k_TD:"),
-            'k_down': HTML(description="k_↓:"),
-            'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
-        }
-
-    def _construct_gui(self) -> Widget:
-        gui_plot = Output()
-        gui_parameters = VBox([
-            HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
-
-            HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
-                  HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['K_d_atp'],
-                  HTML(value="Protomer-ATP dissociation constant")]),
-            HBox([self._free_parameters['K_d_adp'],
-                  HTML(value="Protomer-ADP dissociation constant")]),
-            HBox([self._free_parameters['k_DT'],
-                  HTML(value="Effective ADP->ATP exchange rate")]),
-            # HBox([self._constrained_parameters['k_TD'],
-            #    HTML(value="Effective ATP->ADP exchange rate "\
-            #        "(constrained by Protomer-ATP/ADP exchange model)")]),
-            HBox([self._free_parameters['k_h'],
-                  HTML(value="ATP Hydrolysis rate")]),
-            HBox([self._free_parameters['k_s'],
-                  HTML(value="ATP Synthesis rate")]),
-
-            HTML(value="<b>SC2R Model Physical Parameters</b>"),
-            HBox([self._free_parameters['k_up'],
-                  HTML(value="Translocation up rate")]),
-            HBox([self._constrained_parameters['k_down'],
-                  HTML(value="Translocation down rate "\
-                       "(constrained by detailed balance)")]),
-
-            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self._free_parameters['n_protomers'],
-                  HTML(value="Number of protomers")]),
-            HBox([self._constrained_parameters['k_h_bar'],
-                  HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self._free_parameters['k_extended_to_flat_up'],
-                  HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_down'],
-                  HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
-                  HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_up'],
-                  HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self._constrained_parameters['k_extended_to_flat_down'],
-                  HTML(value="Spiral->disc down rate "\
-                       "(constrained by detailed balance)")]),
-        ])
-
-        gui = HBox([gui_plot, gui_parameters],
-                   layout=Layout(align_items='center'))
-
-        return gui
-
-    def _run(self) -> None:
-        models = [self._sc2r, self._disc_spiral]
-        self._update_models_free_parameters(models, self._free_parameters)
-        self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
-
-        atp_adp_ratios = (np.logspace(-1, 3, 100)
-                          * models[0].equilibrium_atp_adp_ratio)  # Equal for both models
-        velocities = {model: [] for model in models}
-        for atp_adp_ratio in atp_adp_ratios:
-            for model in models:
-                model.atp_adp_ratio = atp_adp_ratio
-                velocities[model].append(model.average_velocity())
-
-        gui_plot = self._gui.children[0]
-        with gui_plot:
-            gui_plot.clear_output(wait=True)
-            plt.close('VelocityVSATPADPRatio')
-            fig = plt.figure('VelocityVSATPADPRatio')
-            fig.canvas.header_visible = False
-            fig.canvas.footer_visible = False
-            fig.canvas.toolbar_visible = False
-            ax = fig.add_subplot(111)
-
-            # Plot velocities vs [ATP]/[ADP]
-            ax.plot(atp_adp_ratios / self._sc2r.equilibrium_atp_adp_ratio,
-                    velocities[self._sc2r],
-                    label='SC/2R',
-                    color='#DDAA33')
-            ax.plot(atp_adp_ratios / self._disc_spiral.equilibrium_atp_adp_ratio,
-                    velocities[self._disc_spiral],
-                    label='Disc-Spiral',
-                    color='#004488')
-            ax.set_xscale('log')
-
-            # Plot grey bars to highlight that <v> = 0 when
-            # [ATP]/[ADP] = ([ATP]/[ADP])|eq.
-            # (log_x1, y0) is the point where the grey bars intersect if the
-            # axes goes from 0 (far left/bottom) to 1 (far right/top).
-            # Calculations need to be done after the plotting is done since it
-            # depends on the limits of the axes, which are automatically
-            # determined by matplotlib.
-            log_xmin, log_xmax = np.log10(ax.get_xlim())
-            ymin, ymax = ax.get_ylim()
-            # Calculations need to be done after the log scale is applied
-            log_x1 = (np.log10(1) - log_xmin) / (log_xmax - log_xmin)
-            y0 = -ymin / (ymax - ymin)
-            ax.axhline(0, xmin=log_xmin, xmax=log_x1,
-                       color='#BBBBBB', linestyle='--', zorder=0)
-            ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB',
-                       linestyle='--', zorder=0)
-
-            ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
-            ax.set_ylabel("<v>[Residue ∙ k]")
-            ax.legend()
-            plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
-            # not in the gui, but below and is not updated but instead a new
-            # plot is displayed everytime a value changes
-
-
-class SC2RDiscSpiralComparison(Experiment):
+class SC2RVSDiscSpiral(Experiment):
     def __init__(self):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
@@ -276,6 +121,8 @@ class SC2RDiscSpiralComparison(Experiment):
             'max_time': _DefaultFloatLogSlider(
                 value=100, min=1, max=3, readout_format='.2f',
                 description="t_max"),
+            'n_trajectories': _DefaultIntSlider(
+                value=1, min=1, max=10, description="n_trajectories"),
             'atp_adp_ratio': _DefaultFloatLogSlider(
                 value=1e2, min=0, max=4, readout_format='.1e',
                 description="[ATP]/[ADP]:"),
@@ -312,6 +159,8 @@ class SC2RDiscSpiralComparison(Experiment):
             HTML(value="<b>Simulation Parameter</b>"),
             HBox([self._free_parameters['max_time'],
                   HTML(value="Maximum simulation time")]),
+            HBox([self._free_parameters['n_trajectories'],
+                    HTML(value="Number of trajectory samples")]),
 
             HTML(value="<b>General Physical Parameters</b>"),
             HBox([self._free_parameters['atp_adp_ratio'],
@@ -381,7 +230,7 @@ class SC2RDiscSpiralComparison(Experiment):
         plot_analytical_stats = True
         plot_empirical_stats = True
         times = np.linspace(0, self._free_parameters['max_time'].value, 100)
-        n_trajectories = 1
+        n_trajectories = self._free_parameters['n_trajectories'].value
 
         if plot_trajectories:
             sc2r_trajectories = self._sc2r.gillespie(
@@ -617,6 +466,173 @@ class SC2RDiscSpiralComparison(Experiment):
             handlebox.add_artist(disc_spiral_2)
             handlebox.add_artist(disc_spiral_3)
             handlebox.add_artist(text)
+
+
+class VelocityVSATPADPRatio(Experiment):
+    """Velocity vs [ATP]/[ADP] experiment.
+
+    Plot the average velocity of the two SC2R and Disc-Spiral models for various
+    values of [ATP]/[ADP] ratio.
+    """
+
+    def __init__(self):
+        self._sc2r = SC2R()
+        self._disc_spiral = DiscSpiral()
+        super().__init__()
+
+    def _construct_free_parameters(self) -> dict[str, Widget]:
+        return {
+            # Source for ATP/ADP ratio:
+            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
+            'ratio_range': IntRangeSlider(
+                value=[1, 4], min=-2, max=6, description="O(([ATP]/[ADP])/([ATP]/[ADP])|eq.)"),
+            'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
+                value=1e-5, min=-7, max=-3, readout_format='.1e',
+                description="([ATP]/[ADP])|eq.:"),
+            'K_d_atp': _DefaultFloatLogSlider(
+                value=0.1, description="K_d^ATP:"),
+            'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
+            'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
+            'k_h': _DefaultFloatLogSlider(description="k_h:"),
+            'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
+            'k_up': _DefaultFloatLogSlider(description="k_↑:"),
+            'n_protomers': _DefaultIntSlider(description="n_protomers:"),
+            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+        }
+
+    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+        return {
+            # 'k_TD': HTML(description="k_TD:"),
+            'k_down': HTML(description="k_↓:"),
+            'k_h_bar': HTML(description="ꝁ_h:"),
+            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
+            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+        }
+
+    def _construct_gui(self) -> Widget:
+        gui_plot = Output()
+        gui_parameters = VBox([
+            HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
+
+            HTML(value="<b>General Physical Parameters</b>"),
+            HBox([self._free_parameters['ratio_range'],
+                  HTML(value="(ATP/ADP)/([ATP]/[ADP])|eq. orders of magnitude")]),
+            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                  HTML(value="Equilibrium ATP/ADP concentration ratio")]),
+            HBox([self._free_parameters['K_d_atp'],
+                  HTML(value="Protomer-ATP dissociation constant")]),
+            HBox([self._free_parameters['K_d_adp'],
+                  HTML(value="Protomer-ADP dissociation constant")]),
+            HBox([self._free_parameters['k_DT'],
+                  HTML(value="Effective ADP->ATP exchange rate")]),
+            # HBox([self._constrained_parameters['k_TD'],
+            #    HTML(value="Effective ATP->ADP exchange rate "\
+            #        "(constrained by Protomer-ATP/ADP exchange model)")]),
+            HBox([self._free_parameters['k_h'],
+                  HTML(value="ATP Hydrolysis rate")]),
+            HBox([self._free_parameters['k_s'],
+                  HTML(value="ATP Synthesis rate")]),
+
+            HTML(value="<b>SC2R Model Physical Parameters</b>"),
+            HBox([self._free_parameters['k_up'],
+                  HTML(value="Translocation up rate")]),
+            HBox([self._constrained_parameters['k_down'],
+                  HTML(value="Translocation down rate "\
+                       "(constrained by detailed balance)")]),
+
+            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+            HBox([self._free_parameters['n_protomers'],
+                  HTML(value="Number of protomers")]),
+            HBox([self._constrained_parameters['k_h_bar'],
+                  HTML(value="Effective ATP hydrolysis rate")]),
+            HBox([self._free_parameters['k_extended_to_flat_up'],
+                  HTML(value="Spiral->disc up translocation rate")]),
+            HBox([self._free_parameters['k_flat_to_extended_down'],
+                  HTML(value="Disc->spiral down translocation rate")]),
+            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                  HTML(value="Effective disc->spiral down translocation rate")]),
+            HBox([self._free_parameters['k_flat_to_extended_up'],
+                  HTML(value="Disc->spiral up translocation rate")]),
+            HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                  HTML(value="Spiral->disc down rate "\
+                       "(constrained by detailed balance)")]),
+        ])
+
+        gui = HBox([gui_plot, gui_parameters],
+                   layout=Layout(align_items='center'))
+
+        return gui
+
+    def _run(self) -> None:
+        models = [self._sc2r, self._disc_spiral]
+        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_gui_constrained_parameters(models,
+                                                self._constrained_parameters)
+
+        min, max = self._free_parameters['ratio_range'].value
+        atp_adp_ratios = (np.logspace(min, max, 100)
+                          * self._free_parameters['equilibrium_atp_adp_ratio'].value)
+        velocities = {model: [] for model in models}
+        for atp_adp_ratio in atp_adp_ratios:
+            for model in models:
+                model.atp_adp_ratio = atp_adp_ratio
+                velocities[model].append(model.average_velocity())
+
+        gui_plot = self._gui.children[0]
+        with gui_plot:
+            gui_plot.clear_output(wait=True)
+            plt.close('VelocityVSATPADPRatio')
+            fig = plt.figure('VelocityVSATPADPRatio')
+            fig.canvas.header_visible = False
+            fig.canvas.footer_visible = False
+            fig.canvas.toolbar_visible = False
+            ax = fig.add_subplot(111)
+
+            # Plot velocities vs [ATP]/[ADP]
+            ax.plot(atp_adp_ratios / self._sc2r.equilibrium_atp_adp_ratio,
+                    velocities[self._sc2r],
+                    label='SC/2R',
+                    color='#DDAA33')
+            ax.plot(atp_adp_ratios / self._disc_spiral.equilibrium_atp_adp_ratio,
+                    velocities[self._disc_spiral],
+                    label='Disc-Spiral',
+                    color='#004488')
+            ax.set_xscale('log')
+
+            # Plot grey bars to highlight that <v> = 0 when
+            # [ATP]/[ADP] = ([ATP]/[ADP])|eq.
+            # (log_x1, y0) is the point where the grey bars intersect if the
+            # axes goes from 0 (far left/bottom) to 1 (far right/top).
+            # Calculations need to be done after the plotting is done since it
+            # depends on the limits of the axes, which are automatically
+            # determined by matplotlib.
+            log_xmin, log_xmax = np.log10(ax.get_xlim())
+            ymin, ymax = ax.get_ylim()
+            # Coordinates where both plots cross each other, on x_log scale
+            cross_x, cross_y = np.log10(1), 0 
+            # We plot it only if it is visible on the plot
+            if (log_xmin < cross_x < log_xmax and ymin < cross_y < ymax):
+                # Calculations need to be done after the log scale is applied
+                log_x1 = (cross_x - log_xmin) / (log_xmax - log_xmin)
+                y0 = (cross_y - ymin) / (ymax - ymin)
+                ax.axhline(0, xmin=log_xmin, xmax=log_x1,
+                        color='#BBBBBB', linestyle='--', zorder=0)
+                ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB',
+                        linestyle='--', zorder=0, label="Cross (1, 0)")
+
+            ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
+            ax.set_ylabel("<v>[Residue ∙ k]")
+            ax.legend()
+            plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
+            # not in the gui, but below and is not updated but instead a new
+            # plot is displayed everytime a value changes
+
+
+class VelocityVSPotential(Experiment):
+    def __init__(self):
+        self._sc2r = 
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):
