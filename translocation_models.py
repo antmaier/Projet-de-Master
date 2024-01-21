@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 from abc import ABC, abstractmethod
+from itertools import pairwise
+from copy import deepcopy
 
 # TODO when doing examples or docstring, emphasis that node/edge attributes are FUNCTIONS not values
 # and then we have to call them with () to get the value
@@ -268,6 +270,7 @@ class TranslocationModel(ABC):
             r += (atp
                   * self.kinetic_scheme.nodes[u]['probability']()
                   * self.kinetic_scheme.edges[u, v]['rate']())
+        return r
 
     def normalize_average_velocity(self, inplace: bool = True
                                    ) -> DiGraph | None:
@@ -620,7 +623,107 @@ class DiscSpiral(TranslocationModel):
                 'rate': lambda: self.k_flat_to_extended_down_bar})
         ])
         return kinetic_scheme
+    
 
+# TODO do a super class with the common part of all NonIdeal models
+class NonIdealSC2R(SC2R):
+    """Non-ideal Sequential Clockwise/2-Residue Step translocation model.
+
+    Non-ideal in the sense that at each state, there is a probability to
+    leave the main loop, to a effective state 'out'.
+    All k_in rates are similar, and remains only one free parameter k_out, 
+    chosen to be the rate of leaving a reference state.
+    """
+
+    def __init__(self) -> None:
+        self.reference_state = 'TTT' # State from which the out rate is computed
+        self.k_out = 1
+        self.k_in = 1
+        super().__init__()
+    
+    def _k_out(self, state: str) -> float:
+        """Compute state out rate, constrained by the detailed balance.
+        
+        The constraint is computed based on the main loop.
+        """
+        rate = self.k_out
+        try:
+            path = nx.shortest_path(self._main_loop, state, self.reference_state)
+        except nx.NetworkXNoPath:
+            pass
+        else:
+            for u, v in pairwise(path):
+                rate *= (self._main_loop.edges[u, v]['rate']()
+                         / self._main_loop.edges[v, u]['rate']())
+        return rate
+
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+                                  ) -> DiGraph:
+        if not kinetic_scheme:
+            kinetic_scheme = DiGraph()
+        # Construct main loop
+        kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
+        self._main_loop = deepcopy(kinetic_scheme) # Used to compute _k_out
+        # Add 'out' state
+        kinetic_scheme.add_node(
+            'out',
+            probability=lambda: self._compute_probabilities()['out'])
+        for node in kinetic_scheme.nodes:
+            if node != 'out':
+                kinetic_scheme.add_edges_from([
+                    (node, 'out', {'rate': lambda node=node: self._k_out(node)}),
+                    ('out', node, {'rate': lambda: self.k_in})])
+        return kinetic_scheme
+    
+class NonIdealDiscSpiral(DiscSpiral):
+    """Non-ideal Disc-Spiral translocation model.
+
+    Non-ideal in the sense that at each state, there is a probability to
+    leave the main loop, to a effective state 'out'.
+    All k_in rates are similar, and remains only one free parameter k_out, 
+    chosen to be the rate of leaving a reference state.
+    """
+
+    def __init__(self) -> None:
+        self.reference_state = 'flat-ATP' # State from which the out rate is computed
+        self.k_out = 1
+        self.k_in = 1
+        super().__init__()
+    
+    def _k_out(self, state: str) -> float:
+        """Compute state out rate, constrained by the detailed balance.
+        
+        The constraint is computed based on the main loop.
+        """
+        rate = self.k_out
+        try:
+            path = nx.shortest_path(self._main_loop, state, self.reference_state)
+        except nx.NetworkXNoPath:
+            pass
+        else:
+            for u, v in pairwise(path):
+                rate *= (self._main_loop.edges[u, v]['rate']()
+                         / self._main_loop.edges[v, u]['rate']())
+        return rate
+
+    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
+                                  ) -> DiGraph:
+        if not kinetic_scheme:
+            kinetic_scheme = DiGraph()
+        # Construct main loop
+        kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
+        self._main_loop = deepcopy(kinetic_scheme) # Used to compute _k_out
+        # Add 'out' state
+        kinetic_scheme.add_node(
+            'out',
+            probability=lambda: self._compute_probabilities()['out'])
+        for node in kinetic_scheme.nodes:
+            if node != 'out':
+                kinetic_scheme.add_edges_from([
+                    (node, 'out', {'rate': lambda node=node: self._k_out(node)}),
+                    ('out', node, {'rate': lambda: self.k_in})])
+        return kinetic_scheme
+        
 
 class DefectiveSC2R(SC2R):
     """Sequential Clockwise/2-Residue Step with one defective protomer.

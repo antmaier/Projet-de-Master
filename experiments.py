@@ -1,8 +1,9 @@
 from translocation_models import TranslocationModel, \
-    SC2R, SC2R2Loops, DefectiveSC2R, \
-    DiscSpiral, DefectiveDiscSpiral
+    SC2R, DefectiveSC2R, NonIdealSC2R, \
+    DiscSpiral, DefectiveDiscSpiral, NonIdealDiscSpiral
 
-from ipywidgets import FloatLogSlider, FloatRangeSlider, IntSlider, IntRangeSlider, \
+from ipywidgets import \
+    FloatLogSlider, FloatRangeSlider, IntSlider, IntRangeSlider, Dropdown, \
     Widget, HBox, VBox, HTML, Output, Layout
 from IPython.display import display
 
@@ -15,6 +16,7 @@ from abc import ABC, abstractmethod
 import copy
 
 
+# TODO Render labels and legends with LaTeX
 class Experiment(ABC):
     """Base class for experiments.
 
@@ -240,35 +242,30 @@ class SC2RVsDiscSpiral(Experiment):
         n_trajectories = self._free_parameters['n_trajectories'].value
 
         if plot_trajectories:
-            sc2r_trajectories = self._sc2r.gillespie(
-                max_time=times[-1],
-                n_simulations=n_trajectories,
-                cumulative_sums='position')
-            disc_spiral_trajectories = self._disc_spiral.gillespie(
-                max_time=times[-1],
-                n_simulations=n_trajectories,
-                cumulative_sums='position')
-            if isinstance(sc2r_trajectories, pd.DataFrame):
-                sc2r_trajectories = [sc2r_trajectories]
-            if isinstance(disc_spiral_trajectories, pd.DataFrame):
-                disc_spiral_trajectories = [disc_spiral_trajectories]
+            trajectories = {model: None for model in models}
+            for model in models:
+                out = model.gillespie(
+                    max_time=times[-1],
+                    n_simulations=n_trajectories,
+                    cumulative_sums='position')
+                if isinstance(out, pd.DataFrame):
+                    out = [out]
+                trajectories[model] = out
 
         if plot_analytical_stats:
-            sc2r_analytical_position_stats = \
-                self._sc2r.analytical_attribute_stats(
-                    'position', times=times)
-            disc_spiral_analytical_position_stats = \
-                self._disc_spiral.analytical_attribute_stats(
-                    'position', times=times)
+            analytical_position_stats = {model: None for model in models}
+            for model in models:
+                analytical_position_stats[model] = \
+                    model.analytical_attribute_stats(
+                        'position', times=times)
 
         if plot_empirical_stats:
+            empirical_position_stats = {model: None for model in models}
             n_simulations = 100
-            sc2r_empirical_position_stats = \
-                self._sc2r.empirical_attribute_stats(
-                    'position', times=times, n_simulations=n_simulations)
-            disc_spiral_empirical_position_stats = \
-                self._disc_spiral.empirical_attribute_stats(
-                    'position', times=times, n_simulations=n_simulations)
+            for model in models:
+                empirical_position_stats[model] = \
+                    model.empirical_attribute_stats(
+                        'position', times=times, n_simulations=n_simulations)
 
         # Plot everything
         gui_plot = self._gui.children[0]
@@ -286,59 +283,40 @@ class SC2RVsDiscSpiral(Experiment):
             alpha_0_2 = '33'
             alpha_0_5 = '80'
             hidden = '#00000000'
-            if plot_analytical_stats:
-                sc2r_fill_between = ax.fill_between(
-                    sc2r_analytical_position_stats['time'],
-                    sc2r_analytical_position_stats['mean'] -
-                    sc2r_analytical_position_stats['std'],
-                    sc2r_analytical_position_stats['mean'] +
-                    sc2r_analytical_position_stats['std'],
-                    # Yellow, alpha=0.2
-                    facecolor=yellow+alpha_0_2, edgecolor=hidden)
-                ax.fill_between(
-                    disc_spiral_analytical_position_stats['time'],
-                    disc_spiral_analytical_position_stats['mean'] -
-                    disc_spiral_analytical_position_stats['std'],
-                    disc_spiral_analytical_position_stats['mean'] +
-                    disc_spiral_analytical_position_stats['std'],
-                    # Blue, alpha=0.2
-                    facecolor=blue+alpha_0_2, edgecolor=hidden)
-            if plot_empirical_stats:
-                ax.plot(
-                    sc2r_empirical_position_stats['time'],
-                    (sc2r_empirical_position_stats['mean']
-                     - sc2r_empirical_position_stats['std']),
-                    color=yellow, linestyle='--', alpha=0.5)
-                ax.plot(
-                    sc2r_empirical_position_stats['time'],
-                    (sc2r_empirical_position_stats['mean']
-                     + sc2r_empirical_position_stats['std']),
-                    color=yellow, linestyle='--', alpha=0.5)
-                ax.plot(
-                    disc_spiral_empirical_position_stats['time'],
-                    (disc_spiral_empirical_position_stats['mean']
-                     - disc_spiral_empirical_position_stats['std']),
-                    color=blue, linestyle='--', alpha=0.5)
-                ax.plot(
-                    disc_spiral_empirical_position_stats['time'],
-                    (disc_spiral_empirical_position_stats['mean']
-                     + disc_spiral_empirical_position_stats['std']),
-                    color=blue, linestyle='--', alpha=0.5)
-            if plot_trajectories:
-                linewidth = 2
-                for trajectory in sc2r_trajectories:
-                    ax.step(trajectory['time'], trajectory['position'],
-                            where='post', color=yellow, alpha=1,
-                            linewidth=linewidth)
-                for trajectory in disc_spiral_trajectories:
-                    ax.step(trajectory['time'], trajectory['position'],
-                            where='post', color=blue, alpha=1,
-                            linewidth=linewidth)
+            colors = [yellow, blue]
+            for model, color in zip(models, colors):
+                if plot_analytical_stats:
+                    ax.fill_between(
+                    analytical_position_stats[model]['time'],
+                    analytical_position_stats[model]['mean'] -
+                    analytical_position_stats[model]['std'],
+                    analytical_position_stats[model]['mean'] +
+                    analytical_position_stats[model]['std'],
+                    facecolor=color+alpha_0_2, edgecolor=hidden)
+
+                if plot_empirical_stats:
+                    ax.plot(
+                        empirical_position_stats[model]['time'],
+                        (empirical_position_stats[model]['mean']
+                            - empirical_position_stats[model]['std']),
+                        color=color, linestyle='--', alpha=0.5)
+                    ax.plot(
+                        empirical_position_stats[model]['time'],
+                        (empirical_position_stats[model]['mean']
+                            + empirical_position_stats[model]['std']),
+                        color=color, linestyle='--', alpha=0.5)
+                    
+                if plot_trajectories:
+                    linewidth = 2
+                    for trajectory in trajectories[model]:
+                        ax.step(trajectory['time'], trajectory['position'],
+                                where='post', color=color, alpha=1,
+                                linewidth=linewidth)
             # Average velocity
-            average_velocity_line = ax.plot(
+            ax.plot(
                 [times[0], times[-1]],
-                [self._sc2r.average_velocity() * times[0],
-                 self._sc2r.average_velocity() * times[-1]],
+                [model.average_velocity() * times[0],
+                 model.average_velocity() * times[-1]],
                 color='#BBBBBB', zorder=0, alpha=0.5)
 
             ax.set_xlabel('Time [a.u.]')
@@ -349,12 +327,13 @@ class SC2RVsDiscSpiral(Experiment):
             # to do it better right now. The width of the legend is set in 
             # ModelsHandler class definition below.
             plt.legend(
-                [self.Models(), self.Sigmas(), self.Trajectories()], 
-                ['', '', ''],
+                [self.Models(), self.Sigmas(), self.Trajectories(), self.ATP()], 
+                ['', '', '', ''],
                 handler_map={
                     self.Models: self.ModelsHandler(),
                     self.Sigmas: self.SigmasHandler(),
-                    self.Trajectories: self.TrajectoriesHandler()}
+                    self.Trajectories: self.TrajectoriesHandler(),
+                    self.ATP: self.ATPHandler(models)}
             )
 
             plt.show()
@@ -369,6 +348,10 @@ class SC2RVsDiscSpiral(Experiment):
 
     class Trajectories():
         """Legend 3rd row."""
+        pass
+
+    class ATP():
+        """Legend 4th row."""
         pass
 
     class ModelsHandler:
@@ -474,6 +457,43 @@ class SC2RVsDiscSpiral(Experiment):
             handlebox.add_artist(disc_spiral_3)
             handlebox.add_artist(text)
 
+    class ATPHandler:
+        """Legend 4th row handler."""
+
+        def __init__(self, models: list[TranslocationModel, TranslocationModel]):
+            self._models = models # [SC2R, Disc-Spiral]
+
+        def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+            x0, y0 = handlebox.xdescent, handlebox.ydescent
+            width, height = handlebox.width, handlebox.height
+
+            r_atp = mpl.text.Text(x=0, y=0, text=r'$\frac{\text{#ATP}}{\text{Residue}}=$')
+
+            x0 += 4*fontsize
+            defectless_circle = mpl.patches.Circle(
+                (x0 + width/2, height/2), 0.6*fontsize, facecolor='#DDAA3380',
+                edgecolor='#DDAA33', transform=handlebox.get_transform())
+            defectless_text = mpl.text.Text(
+                x=x0 + width, y=0, 
+                text=str(round(self._models[0].atp_consumption_rate()
+                               / self._models[0].average_velocity(), 2)) + ";")
+            
+            x0 += 5*fontsize
+            defective_circle = mpl.patches.Circle(
+                (x0 + width/2, height/2), 0.6*fontsize, facecolor='#00448880',
+                edgecolor='#004488', transform=handlebox.get_transform())
+            defective_text = mpl.text.Text(
+                x=x0 + width, y=0,
+                text=str(round(self._models[1].atp_consumption_rate()
+                               / self._models[1].average_velocity(), 2)))
+            
+            handlebox.add_artist(r_atp)
+            handlebox.add_artist(defectless_circle)
+            handlebox.add_artist(defectless_text)
+            handlebox.add_artist(defective_circle)
+            handlebox.add_artist(defective_text)
+
+
 
 class VelocityVsATPADPRatio(Experiment):
     """Velocity vs [ATP]/[ADP] experiment.
@@ -544,7 +564,7 @@ class VelocityVsATPADPRatio(Experiment):
             HBox([self._free_parameters['k_s'],
                   HTML(value="ATP Synthesis rate")]),
 
-            HTML(value="<b>SC2R Model Physical Parameters</b>"),
+            HTML(value="<b>SC/2R Model Physical Parameters</b>"),
             HBox([self._free_parameters['k_up'],
                   HTML(value="Translocation up rate")]),
             HBox([self._constrained_parameters['k_down'],
@@ -662,7 +682,7 @@ class VelocityVsPotential(Experiment):
     def __init__(self):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
-        # Cpy used for accessing rates before applying the Boltzmann factor due to potential
+        # Copy used for accessing rates before applying the Boltzmann factor due to potential
         self._sc2r_copy = copy.deepcopy(self._sc2r)
         self._disc_spiral_copy = copy.deepcopy(self._disc_spiral)
         super().__init__()
@@ -815,6 +835,7 @@ class VelocityVsPotential(Experiment):
             plt.show()
 
 
+# TODO add checkboxes for plotting trajectories, analytical and empirical
 class DefectlessVsDefective(Experiment):
     """Defectless vs defective comparison.
 
@@ -950,7 +971,7 @@ class DefectlessVsDefective(Experiment):
         n_trajectories = self._free_parameters['n_trajectories'].value
 
         if plot_trajectories:
-            trajectories = {model: [] for model in models}
+            trajectories = {model: None for model in models}
             for model in models:
                 out = model.gillespie(
                     max_time=times[-1],
@@ -961,14 +982,14 @@ class DefectlessVsDefective(Experiment):
                 trajectories[model] = out
 
         if plot_analytical_stats:
-            analytical_position_stats = {model: [] for model in models}
+            analytical_position_stats = {model: None for model in models}
             for model in models:
                 analytical_position_stats[model] = \
                     model.analytical_attribute_stats(
                         'position', times=times)
 
         if plot_empirical_stats:
-            empirical_position_stats = {model: [] for model in models}
+            empirical_position_stats = {model: None for model in models}
             n_simulations = 100
             for model in models:
                 empirical_position_stats[model] = \
@@ -1239,6 +1260,170 @@ class DefectlessVsDefective(Experiment):
             handlebox.add_artist(defectless_text)
             handlebox.add_artist(defective_line)
             handlebox.add_artist(defective_text)
+
+
+# TODO show k_out for each state 
+class NonIdeal(Experiment):
+    def __init__(self):
+        self._non_ideal_sc2r = NonIdealSC2R()
+        self._non_ideal_disc_spiral = NonIdealDiscSpiral()
+        super().__init__()
+
+    def _construct_free_parameters(self) -> dict[str, Widget]:
+        return {
+            'k_out_range': IntRangeSlider(
+                value=[-3, 2], min=-3, max=2, continuous_update=False,
+                description="O(k_out):"),
+            'k_in': _DefaultFloatLogSlider(description="k_in:"),
+            'sc2r_reference_state': Dropdown(
+                options=[state for state 
+                         in self._non_ideal_sc2r.kinetic_scheme.nodes
+                         if state != 'out'],
+                value='TTT', continuous_update=False,
+                description="SC/2R reference state:"),
+            'disc_spiral_reference_state': Dropdown(
+                options=[state for state 
+                         in self._non_ideal_disc_spiral.kinetic_scheme.nodes
+                         if state != 'out'],
+                value='flat-ATP', continuous_update=False,
+                description="Disc-Spiral reference state:"),
+            # Source for ATP/ADP ratio:
+            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
+            'atp_adp_ratio': _DefaultFloatLogSlider(
+                value=100, min=-1, max=4, readout_format='.1e',
+                description="[ATP]/[ADP]:"),
+            'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
+                value=1e-5, min=-7, max=1, readout_format='.1e',
+                description="([ATP]/[ADP])|eq.:"),
+            'K_d_atp': _DefaultFloatLogSlider(
+                value=0.1, description="K_d^ATP:"),
+            'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
+            'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
+            'k_h': _DefaultFloatLogSlider(description="k_h:"),
+            'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
+            'k_up': _DefaultFloatLogSlider(description="k_↑:"),
+            'n_protomers': _DefaultIntSlider(description="n_protomers:"),
+            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+        }
+
+    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+        return {
+            'k_TD': HTML(description="k_TD:"),
+            'k_down': HTML(description="k_↓:"),
+            'k_h_bar': HTML(description="ꝁ_h:"),
+            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
+            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+        }
+
+    def _construct_gui(self) -> Widget:
+        gui_plot = Output()
+        gui_parameters = VBox([
+            HTML(value="<h1>Non-Ideal Models</h1>"),
+
+            HBox([self._free_parameters['k_out_range'],
+                  HTML(value="Order of out-of-main-loop rate")]),
+            HBox([self._free_parameters['k_in'],
+                  HTML(value="Back-in-main-loop rate")]),
+
+            HTML(value="<b>General Physical Parameters</b>"),
+            HBox([self._free_parameters['atp_adp_ratio'],
+                  HTML(value="ATP/ADP concentration ratio")]),
+            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                  HTML(value="Equilibrium ATP/ADP concentration ratio")]),
+            HBox([self._free_parameters['K_d_atp'],
+                  HTML(value="Protomer-ATP dissociation constant")]),
+            HBox([self._free_parameters['K_d_adp'],
+                  HTML(value="Protomer-ADP dissociation constant")]),
+            HBox([self._free_parameters['k_DT'],
+                  HTML(value="Effective ADP->ATP exchange rate")]),
+            HBox([self._constrained_parameters['k_TD'],
+                  HTML(value="Effective ATP->ADP exchange rate "\
+                    "(constrained by Protomer-ATP/ADP exchange model)")]),
+            HBox([self._free_parameters['k_h'],
+                  HTML(value="ATP Hydrolysis rate")]),
+            HBox([self._free_parameters['k_s'],
+                  HTML(value="ATP Synthesis rate")]),
+
+            HTML(value="<b>SC/2R Model Physical Parameters</b>"),
+            HBox([self._free_parameters['sc2r_reference_state'],
+                  HTML(value="SC/2R out-of-main-loop reference state")]),
+            HBox([self._free_parameters['k_up'],
+                  HTML(value="Translocation up rate")]),
+            HBox([self._constrained_parameters['k_down'],
+                  HTML(value="Translocation down rate "\
+                       "(constrained by detailed balance)")]),
+
+            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+            HBox([self._free_parameters['disc_spiral_reference_state'],
+                  HTML(value="Disc-Spiral out-of-main-loop reference state")]),
+            HBox([self._free_parameters['n_protomers'],
+                  HTML(value="Number of protomers")]),
+            HBox([self._constrained_parameters['k_h_bar'],
+                  HTML(value="Effective ATP hydrolysis rate")]),
+            HBox([self._free_parameters['k_extended_to_flat_up'],
+                  HTML(value="Spiral->disc up translocation rate")]),
+            HBox([self._free_parameters['k_flat_to_extended_down'],
+                  HTML(value="Disc->spiral down translocation rate")]),
+            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                  HTML(value="Effective disc->spiral down translocation rate")]),
+            HBox([self._free_parameters['k_flat_to_extended_up'],
+                  HTML(value="Disc->spiral up translocation rate")]),
+            HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                  HTML(value="Spiral->disc down rate "\
+                       "(constrained by detailed balance)")]),
+        ])
+
+        gui = HBox([gui_plot, gui_parameters],
+                   layout=Layout(align_items='center'))
+
+        return gui
+    
+    def _run(self) -> None:
+        models = [self._non_ideal_sc2r, self._non_ideal_disc_spiral]
+        # Update models<->GUI
+        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_gui_constrained_parameters(models,
+                                                self._constrained_parameters)
+        self._non_ideal_sc2r.reference_state = \
+            self._free_parameters['sc2r_reference_state'].value
+        self._non_ideal_disc_spiral.reference_state = \
+            self._free_parameters['disc_spiral_reference_state'].value
+        
+        # Probability of being in the out state vs k_out range
+        min, max = self._free_parameters['k_out_range'].value
+        k_outs = np.logspace(min, max, 100)
+        probabilities = {model: [] for model in models}
+        for model in models:
+            for k_out in k_outs:
+                model.k_out = k_out
+                probabilities[model].append(1-model._compute_probabilities()['out'])
+
+        gui_plot = self._gui.children[0]
+        with gui_plot:
+            gui_plot.clear_output(wait=True)
+            plt.close('NonIdeal')
+            fig = plt.figure('NonIdeal')
+            fig.canvas.header_visible = False
+            fig.canvas.footer_visible = False
+            fig.canvas.toolbar_visible = False
+            ax = fig.add_subplot(111)
+
+            # Plot velocities vs [ATP]/[ADP]
+            sc2r_plot = ax.plot(k_outs,
+                    probabilities[self._non_ideal_sc2r],
+                    label="Non-Ideal SC/2R",
+                    color='#DDAA33')
+            disc_spiral_plot = ax.plot(k_outs,
+                    probabilities[self._non_ideal_disc_spiral],
+                    label="Non-Ideal Disc-Spiral",
+                    color='#004488')
+
+            ax.set_xlabel("k_out [k]")
+            ax.set_ylabel("ℙ(main loop)")
+            ax.legend()
+            plt.show()
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):
