@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 # and then we have to call them with () to get the value
 # TODO modify detailed balance equations to avoid atp_adp_ratio to explicitely appear
 
+
 class TranslocationModel(ABC):
     """A translocation model defined by a kinetic scheme.
 
@@ -72,7 +73,6 @@ class TranslocationModel(ABC):
         self.k_h = 1
         self.k_s = 1
 
-        # None # TODO abstract attribute
         self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
@@ -176,7 +176,8 @@ class TranslocationModel(ABC):
                 result['edge'].append(chosen_edge)
             result = pd.DataFrame(result)
             if cumulative_sums:
-                self._compute_cumulative_sums(result, cumulative_sums) # TODO understand why if very few steps, there is a warning
+                # TODO understand why if very few steps, there is a warning
+                self._compute_cumulative_sums(result, cumulative_sums)
             results.append(result)
 
         if n_simulations == 1:
@@ -493,7 +494,6 @@ class SC2R(TranslocationModel):
     def __init__(self, atp_adp_ratio: float = 10) -> None:
         self.k_up = 1  # Translocation up rate
         super().__init__(atp_adp_ratio)
-        # self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
     def k_down(self) -> float:
@@ -532,7 +532,6 @@ class SC2R2Loops(SC2R):
 
     def __init__(self, atp_adp_ratio: float = 10) -> None:
         super().__init__(atp_adp_ratio)
-        # self.kinetic_scheme = self._construct_kinetic_scheme()
 
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
                                   ) -> DiGraph:
@@ -563,7 +562,6 @@ class DiscSpiral(TranslocationModel):
         self.k_flat_to_extended_down = 1  # Disc->spiral down translocation rate
         self.k_flat_to_extended_up = 1  # Disc->spiral up translocation rate
         super().__init__(atp_adp_ratio)
-        # self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
     def k_h_bar(self) -> float:
@@ -660,8 +658,6 @@ class DefectiveSC2R(SC2R):
         self.defect_factor = defect_factor
         self.n_protomers = n_protomers
         super().__init__(atp_adp_ratio)
-        # Redundant kinetic_scheme construction, but more explicit
-        # self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
     def k_h_defect(self) -> float:
@@ -785,8 +781,6 @@ class DefectiveDiscSpiral(DiscSpiral):
         """
         self.defect_factor = defect_factor
         super().__init__(atp_adp_ratio, n_protomers)
-        # Redundant kinetic_scheme construction, but more explicit
-        # self.kinetic_scheme = self._construct_kinetic_scheme()
 
     @property
     def k_h_defect(self) -> float:
@@ -878,3 +872,7 @@ class DefectiveDiscSpiral(DiscSpiral):
                 'rate': lambda: self.k_flat_to_extended_down})
         ])
         return kinetic_scheme
+
+
+
+

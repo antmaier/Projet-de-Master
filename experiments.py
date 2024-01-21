@@ -109,6 +109,8 @@ class Experiment(ABC):
                     break
 
 # TODO add ATP consumption rate in legend
+# TODO understand why at the end of a trajectory, the last step is not visible
+# and do the same for potential experiment
 class SC2RVsDiscSpiral(Experiment):
     """SC/2R vs Disc-Spiral comparison.
     
