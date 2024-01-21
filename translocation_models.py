@@ -75,17 +75,6 @@ class TranslocationModel(ABC):
         # None # TODO abstract attribute
         self.kinetic_scheme = self._construct_kinetic_scheme()
 
-    #@property
-    #def atp_adp_ratio(self) -> float:
-    #    """ATP/ADP concentration ratio."""
-    #    return self._atp_adp_ratio
-
-    #@atp_adp_ratio.setter
-    #def atp_adp_ratio(self, value: float) -> None:
-    #    if value < 0:
-    #        raise ValueError("The ATP/ADP ratio must be nonnegative.")
-    #    self._atp_adp_ratio = value
-
     @property
     def k_TD(self) -> float:
         """Effective ATP->ADP exchange rate.
@@ -187,7 +176,7 @@ class TranslocationModel(ABC):
                 result['edge'].append(chosen_edge)
             result = pd.DataFrame(result)
             if cumulative_sums:
-                self._compute_cumulative_sums(result, cumulative_sums)
+                self._compute_cumulative_sums(result, cumulative_sums) # TODO understand why if very few steps, there is a warning
             results.append(result)
 
         if n_simulations == 1:
@@ -197,6 +186,7 @@ class TranslocationModel(ABC):
 
         return out
 
+    # TODO maybe delete?
     def plot_position_evolution(
         self,
         trajectory: pd.DataFrame | list[pd.DataFrame],
@@ -297,6 +287,7 @@ class TranslocationModel(ABC):
                     old_rate() / average_velocity)
         return kinetic_scheme
 
+    # TODO debug difference between empirical and analytical std
     def analytical_attribute_stats(
         self,
         edge_attribute: str,

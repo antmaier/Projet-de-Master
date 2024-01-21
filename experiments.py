@@ -109,7 +109,7 @@ class Experiment(ABC):
                     break
 
 # TODO add ATP consumption rate in legend
-class SC2RVSDiscSpiral(Experiment):
+class SC2RVsDiscSpiral(Experiment):
     """SC/2R vs Disc-Spiral comparison.
     
     Plot trajectories, average position and std (analytical and/or emprirical)
@@ -125,9 +125,9 @@ class SC2RVSDiscSpiral(Experiment):
         return {
             'max_time': _DefaultFloatLogSlider(
                 value=100, min=1, max=3, readout_format='.2f',
-                description="t_max"),
+                description="t_max:"),
             'n_trajectories': _DefaultIntSlider(
-                value=1, min=1, max=10, description="n_trajectories"),
+                value=1, min=1, max=10, description="n_trajectories:"),
             'atp_adp_ratio': _DefaultFloatLogSlider(
                 value=1e2, min=0, max=4, readout_format='.1e',
                 description="[ATP]/[ADP]:"),
@@ -272,8 +272,8 @@ class SC2RVSDiscSpiral(Experiment):
         gui_plot = self._gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
-            plt.close('SC2RVSDiscSpiral')
-            fig = plt.figure('SC2RVSDiscSpiral')
+            plt.close('SC2RVsDiscSpiral')
+            fig = plt.figure('SC2RVsDiscSpiral')
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -473,7 +473,7 @@ class SC2RVSDiscSpiral(Experiment):
             handlebox.add_artist(text)
 
 
-class VelocityVSATPADPRatio(Experiment):
+class VelocityVsATPADPRatio(Experiment):
     """Velocity vs [ATP]/[ADP] experiment.
 
     Plot the average velocity of the two SC2R and Disc-Spiral models for various
@@ -607,8 +607,8 @@ class VelocityVSATPADPRatio(Experiment):
         gui_plot = self._gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
-            plt.close('VelocityVSATPADPRatio')
-            fig = plt.figure('VelocityVSATPADPRatio')
+            plt.close('VelocityVsATPADPRatio')
+            fig = plt.figure('VelocityVsATPADPRatio')
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -654,7 +654,7 @@ class VelocityVSATPADPRatio(Experiment):
             # plot is displayed everytime a value changes
 
 
-class VelocityVSPotential(Experiment):
+class VelocityVsPotential(Experiment):
     # https://fr.wikipedia.org/wiki/%C3%89quation_d%27Eyring
     # https://fr.wikipedia.org/wiki/Loi_d%27Arrhenius
     def __init__(self):
@@ -789,8 +789,8 @@ class VelocityVSPotential(Experiment):
         gui_plot = self._gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
-            plt.close('VelocityVSPotential')
-            fig = plt.figure('VelocityVSPotential')
+            plt.close('VelocityVsPotential')
+            fig = plt.figure('VelocityVsPotential')
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -811,6 +811,432 @@ class VelocityVSPotential(Experiment):
             ax.set_ylabel("❬v❭ [Residue ∙ k]")
             ax.legend()
             plt.show()
+
+
+class DefectlessVsDefective(Experiment):
+    """Defectless vs defective comparison.
+
+    Plot trajectories, average position and std (analytical and/or emprirical)
+    for all models (SC/2R and Disc-Spiral, and defectless and defective).
+    """
+
+    def __init__(self):
+        self._sc2r = SC2R()
+        self._defective_sc2r = DefectiveSC2R()
+        self._disc_spiral = DiscSpiral()
+        self._defective_disc_spiral = DefectiveDiscSpiral()
+        super().__init__()
+
+    def _construct_free_parameters(self) -> dict[str, Widget]:
+        return {
+            'defect_factor': _DefaultFloatLogSlider(
+                value=0.1, min=-3, max=0, readout_format='.3f',
+                description="defect_factor:"),
+            'n_protomers': _DefaultIntSlider(description="n_protomers:"),
+            'max_time': _DefaultFloatLogSlider(
+                value=100, min=1, max=3, readout_format='.2f',
+                description="t_max:"),
+            'n_trajectories': _DefaultIntSlider(
+                value=1, min=1, max=10, description="n_trajectories:"),
+            'atp_adp_ratio': _DefaultFloatLogSlider(
+                value=1e2, min=0, max=4, readout_format='.1e',
+                description="[ATP]/[ADP]:"),
+            'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
+                value=1e-5, min=-7, max=-3, readout_format='.1e',
+                description="([ATP]/[ADP])|eq.:"),
+            'K_d_atp': _DefaultFloatLogSlider(
+                value=0.1, description="K_d^ATP:"),
+            'K_d_adp': _DefaultFloatLogSlider(description="K_d^ADP:"),
+            'k_DT': _DefaultFloatLogSlider(description="k_DT:"),
+            'k_h': _DefaultFloatLogSlider(description="k_h:"),
+            'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
+            'k_up': _DefaultFloatLogSlider(description="k_↑:"),
+            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+        }
+
+    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+        return {
+            'k_TD': HTML(description="k_TD:"),
+            'k_down': HTML(description="k_↓:"),
+            'k_h_bar': HTML(description="ꝁ_h:"),
+            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
+            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+        }
+
+    def _construct_gui(self) -> Widget:
+        gui_plot = Output()
+        gui_parameters = HBox([
+            VBox([
+                HTML(
+                    value="<h1>SC/2R and Disc-Spiral ATP consumption rate comparison</h1>"),
+
+                HBox([self._free_parameters['defect_factor'],
+                      HTML(value="Hydrolysis defect factor")]),
+                HBox([self._free_parameters['n_protomers'],
+                      HTML(value="Number of protomers")]),
+
+                HTML(value="<b>Simulation Parameter</b>"),
+                HBox([self._free_parameters['max_time'],
+                      HTML(value="Maximum simulation time")]),
+                HBox([self._free_parameters['n_trajectories'],
+                      HTML(value="Number of trajectory samples")]),
+
+                HTML(value="<b>General Physical Parameters</b>"),
+                HBox([self._free_parameters['atp_adp_ratio'],
+                      HTML(value="ATP/ADP concentration ratio")]),
+                HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                      HTML(value="Equilibrium ATP/ADP concentration ratio")]),
+                HBox([self._free_parameters['K_d_atp'],
+                      HTML(value="Protomer-ATP dissociation constant")]),
+                HBox([self._free_parameters['K_d_adp'],
+                      HTML(value="Protomer-ADP dissociation constant")]),
+                HBox([self._free_parameters['k_DT'],
+                      HTML(value="Effective ADP->ATP exchange rate")]),
+                HBox([self._constrained_parameters['k_TD'],
+                      HTML(value="Effective ATP->ADP exchange rate "
+                           "(constrained by Protomer-ATP/ADP exchange model)")]),
+                HBox([self._free_parameters['k_h'],
+                      HTML(value="ATP Hydrolysis rate")]),
+                HBox([self._free_parameters['k_s'],
+                      HTML(value="ATP Synthesis rate")]),
+            ]),
+            VBox([
+                HTML(value="<b>SC2R Model Physical Parameters</b>"),
+                HBox([self._free_parameters['k_up'],
+                      HTML(value="Translocation up rate")]),
+                HBox([self._constrained_parameters['k_down'],
+                      HTML(value="Translocation down rate "
+                           "(constrained by detailed balance)")]),
+
+                HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+                HBox([self._constrained_parameters['k_h_bar'],
+                      HTML(value="Effective ATP hydrolysis rate")]),
+                HBox([self._free_parameters['k_extended_to_flat_up'],
+                      HTML(value="Spiral->disc up translocation rate")]),
+                HBox([self._free_parameters['k_flat_to_extended_down'],
+                      HTML(value="Disc->spiral down translocation rate")]),
+                HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                      HTML(value="Effective disc->spiral down translocation rate")]),
+                HBox([self._free_parameters['k_flat_to_extended_up'],
+                      HTML(value="Disc->spiral up translocation rate")]),
+                HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                      HTML(value="Spiral->disc down rate "
+                           "(constrained by detailed balance)")]),
+            ])])
+
+        gui = VBox([gui_plot, gui_parameters],
+                   layout=Layout(align_items='center'))
+
+        return gui
+
+    def _run(self) -> None:
+        # Update GUI<->Models
+        models = [self._sc2r, self._defective_sc2r,
+                  self._disc_spiral, self._defective_disc_spiral]
+        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_gui_constrained_parameters(models,
+                                                self._constrained_parameters)
+
+        # For each model, we do a few trajectories, compute analytical stats and
+        # empirical stats, and then plot everything.
+        plot_trajectories = True
+        plot_analytical_stats = True
+        plot_empirical_stats = True
+        times = np.linspace(0, self._free_parameters['max_time'].value, 100)
+        n_trajectories = self._free_parameters['n_trajectories'].value
+
+        if plot_trajectories:
+            trajectories = {model: [] for model in models}
+            for model in models:
+                out = model.gillespie(
+                    max_time=times[-1],
+                    n_simulations=n_trajectories,
+                    cumulative_sums='position')
+                if isinstance(out, pd.DataFrame):
+                    out = [out]
+                trajectories[model] = out
+
+        if plot_analytical_stats:
+            analytical_position_stats = {model: [] for model in models}
+            for model in models:
+                analytical_position_stats[model] = \
+                    model.analytical_attribute_stats(
+                        'position', times=times)
+
+        if plot_empirical_stats:
+            empirical_position_stats = {model: [] for model in models}
+            n_simulations = 100
+            for model in models:
+                empirical_position_stats[model] = \
+                    model.empirical_attribute_stats(
+                        'position', times=times, n_simulations=n_simulations)
+
+        # Plot everything
+        gui_plot = self._gui.children[0]
+        with gui_plot:
+            gui_plot.clear_output(wait=True)
+            plt.close('DefectlessVsDefective')
+            fig = plt.figure('DefectlessVsDefective', figsize=(10, 5))
+            fig.canvas.header_visible = False
+            fig.canvas.footer_visible = False
+            fig.canvas.toolbar_visible = False
+            ax_sc2r = fig.add_subplot(121)
+            ax_disc_spiral = fig.add_subplot(122)
+
+            yellow = '#DDAA33'
+            blue = '#004488'
+            red = '#BB5566'
+            alpha_0_2 = '33'
+            alpha_0_5 = '80'
+            hidden = '#00000000'
+            nested_models = [[self._sc2r, self._defective_sc2r],
+                             [self._disc_spiral, self._defective_disc_spiral]]
+            nested_colors = [[yellow, red], [blue, red]]
+            axes = [ax_sc2r, ax_disc_spiral]
+            names = ['SC/2R', 'Disc-Spiral']
+            # First SC2R, then Disc-Spiral
+            for models, colors, ax, name in zip(
+                nested_models, nested_colors, axes, names):
+                # First Non-defective, then Defective
+                for model, color in zip(models, colors):
+                    if plot_analytical_stats:
+                        ax.fill_between(
+                            analytical_position_stats[model]['time'],
+                            analytical_position_stats[model]['mean'] -
+                            analytical_position_stats[model]['std'],
+                            analytical_position_stats[model]['mean'] +
+                            analytical_position_stats[model]['std'],
+                            facecolor=color+alpha_0_2, edgecolor=hidden)
+
+                    if plot_empirical_stats:
+                        ax.plot(
+                            empirical_position_stats[model]['time'],
+                            (empirical_position_stats[model]['mean']
+                             - empirical_position_stats[model]['std']),
+                            color=color, linestyle='--', alpha=0.5)
+                        ax.plot(
+                            empirical_position_stats[model]['time'],
+                            (empirical_position_stats[model]['mean']
+                             + empirical_position_stats[model]['std']),
+                            color=color, linestyle='--', alpha=0.5)
+
+                    if plot_trajectories:
+                        linewidth = 2
+                        for trajectory in trajectories[model]:
+                            ax.step(trajectory['time'], trajectory['position'],
+                                    where='post', color=color, alpha=1,
+                                    linewidth=linewidth)
+                    # Average velocity
+                    ax.plot(
+                        [times[0], times[-1]],
+                        [model.average_velocity() * times[0],
+                         model.average_velocity() * times[-1]],
+                        color=color, zorder=0, alpha=0.5)
+
+                ax.set_xlabel('Time [1/k]')
+                ax.set_ylabel('Position [#Residue]')
+
+                # Very ugly code for custom legend. We use Handlerclasses defined
+                # below. This is definitely ugly but it works, and I don't have time
+                # to do it better right now. The width of the legend is set in
+                # ModelsHandler class definition below.
+                velocities = [model.average_velocity() for model in models]
+                ax.legend(
+                    [self.Models(), self.Sigmas(), self.Trajectories(), self.Velocities()],
+                    ['', '', '', ''],
+                    handler_map={
+                        self.Models: self.ModelsHandler(colors, velocities),
+                        self.Sigmas: self.SigmasHandler(colors),
+                        self.Trajectories: self.TrajectoriesHandler(colors),
+                        self.Velocities: self.VelocitiesHandler(colors, velocities)},
+                    title=name
+                )
+
+            plt.show()
+
+    class Models():
+        """Legend 1st row."""
+        pass
+
+    class Sigmas():
+        """Legend 2nd row."""
+        pass
+
+    class Trajectories():
+        """Legend 3rd row."""
+        pass
+
+    class Velocities():
+        """Legend 4th row."""
+        pass
+
+    class ModelsHandler:
+        """Legend 1st row handler."""
+
+        def __init__(self, colors: list[str, str], velocities: list[float, float]):
+            self._colors = colors  # [Defectless, Defective] colors
+            # [Defectless, Defective] average velocities
+            self._velocities = velocities
+
+        def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+            x0, y0 = handlebox.xdescent, handlebox.ydescent
+            width, height = handlebox.width, handlebox.height
+
+            x0 = width
+            defectless_circle = mpl.patches.Circle(
+                (x0 + width/2, height/2), 0.6*fontsize,
+                facecolor=self._colors[0] + '80', edgecolor=self._colors[0],
+                transform=handlebox.get_transform())
+            defectless_text = mpl.text.Text(x=x0 + width, y=0, text="Defectless")
+
+            x0 += width + 6*fontsize
+            defective_circle = mpl.patches.Circle(
+                (x0 + width/2, height/2), 0.6*fontsize,
+                facecolor=self._colors[1] + '80', edgecolor=self._colors[1],
+                transform=handlebox.get_transform())
+            deffective_text = mpl.text.Text(x=x0 + width, y=0, text='Defective')
+
+            # Width of full legend handled by this parameter, ugly but it works
+            handlebox.width *= 8.7
+            handlebox.add_artist(defectless_circle)
+            handlebox.add_artist(defectless_text)
+            handlebox.add_artist(defective_circle)
+            handlebox.add_artist(deffective_text)
+
+    class SigmasHandler:
+        """Legend 2nd row handler."""
+
+        def __init__(self, colors: list[str, str]):
+            self._colors = colors  # List[Defectless, Defective] colors
+
+        def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+            x0, y0 = handlebox.xdescent, handlebox.ydescent
+            width, height = handlebox.width, handlebox.height
+
+            # Analytical
+            defectless_triangle_xy = np.array(
+                [[0, 0], [0, height], [width, height]])
+            defectless_triangle = mpl.patches.Polygon(
+                defectless_triangle_xy, closed=True,
+                facecolor=self._colors[0]+'80', edgecolor='#00000000',
+                transform=handlebox.get_transform())
+            defective_triangle_xy = np.array(
+                [[0, 0], [width, height], [width, 0]])
+            defective_triangle = mpl.patches.Polygon(
+                defective_triangle_xy, closed=True,
+                facecolor=self._colors[1]+'80', edgecolor='#00000000',
+                transform=handlebox.get_transform())
+            defectless_analytical_line = mpl.lines.Line2D(
+                [0, width/2], [0, height/2], color=self._colors[0], alpha=0.5)
+            defective_analytical_line = mpl.lines.Line2D(
+                [width/2, width], [height/2, height], color=self._colors[1],
+                alpha=0.5)
+            analytical_text = mpl.text.Text(x=width + 0.5*fontsize, y=0,
+                                            text='(Ana.);')
+
+            # Empirical
+            x0 = width + 4.5*fontsize
+            defectless_std_line = mpl.lines.Line2D(
+                [x0, x0 + width], [height, height], linestyle='--',
+                color=self._colors[0], alpha=0.5)
+            defectless_mean_line = mpl.lines.Line2D(
+                [x0, x0 + width], [height/2, height/2], color=self._colors[0],
+                alpha=0.5)
+            defective_std_line = mpl.lines.Line2D(
+                [x0, x0 + width], [0, 0], linestyle='--',
+                color=self._colors[1], alpha=0.5)
+            defective_mean_line = mpl.lines.Line2D(
+                [x0 + width/2, x0 + width], [height/2, height/2],
+                color=self._colors[1], alpha=0.5)
+            empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
+                                           text='(Emp.):')
+
+            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, text='❬Pos.❭±σ')
+
+            handlebox.add_artist(defectless_triangle)
+            handlebox.add_artist(defective_triangle)
+            handlebox.add_artist(defectless_analytical_line)
+            handlebox.add_artist(defective_analytical_line)
+            handlebox.add_artist(analytical_text)
+            handlebox.add_artist(defectless_std_line)
+            handlebox.add_artist(defectless_mean_line)
+            handlebox.add_artist(defective_std_line)
+            handlebox.add_artist(defective_mean_line)
+            handlebox.add_artist(empirical_text)
+            handlebox.add_artist(text)
+
+    class TrajectoriesHandler:
+        """Legend 3rd row handler."""
+
+        def __init__(self, colors: list[str, str]):
+            self._colors = colors  # List[Defectless, Defective] colors
+
+        def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+            x0, y0 = handlebox.xdescent, handlebox.ydescent
+            width, height = handlebox.width, handlebox.height
+
+            defectless_1 = mpl.lines.Line2D(
+                [0, width/3], [height/3, height/3], color=self._colors[0])
+            defectless_2 = mpl.lines.Line2D(
+                [width/3, width/3], [height/3, height], color=self._colors[0])
+            defectless_3 = mpl.lines.Line2D(
+                [width/3, width], [height, height], color=self._colors[0])
+
+            defective_1 = mpl.lines.Line2D(
+                [0, 2*width/3], [0, 0], color=self._colors[1])
+            defective_2 = mpl.lines.Line2D(
+                [2*width/3, 2*width/3], [0, 2*height/3], color=self._colors[1])
+            defective_3 = mpl.lines.Line2D(
+                [2*width/3, width], [2*height/3, 2*height/3],
+                color=self._colors[1])
+
+            text = mpl.text.Text(x=1.5*width + 0*fontsize,
+                                 y=0, text='Some trajectory samples')
+
+            handlebox.add_artist(defectless_1)
+            handlebox.add_artist(defectless_2)
+            handlebox.add_artist(defectless_3)
+            handlebox.add_artist(defective_1)
+            handlebox.add_artist(defective_2)
+            handlebox.add_artist(defective_3)
+            handlebox.add_artist(text)
+
+    class VelocitiesHandler:
+        """Legend 4th row handler."""
+
+        def __init__(self, colors: list[str, str], velocities: list[float, float]):
+            self._colors = colors # List[Defectless, Defective] colors
+            self._velocities = velocities # List[Defectless, Defective] velocities
+
+        def legend_artist(self, legend, orig_handle, fontsize, handlebox):
+            x0, y0 = handlebox.xdescent, handlebox.ydescent
+            width, height = handlebox.width, handlebox.height
+
+            v = mpl.text.Text(x=0, y=0, text='❬v❭ =')
+
+            x0 += 4*fontsize
+            defectless_line = mpl.lines.Line2D(
+                [x0, x0 + 0.6*width], [height/2, height/2], color=self._colors[0],
+                alpha=0.5)
+            defectless_text = mpl.text.Text(
+                x=x0 + 0.8*width, y=0,
+                text=str(round(self._velocities[0], 2)) + ";")
+            
+            x0 += width + 4*fontsize
+            defective_line = mpl.lines.Line2D(
+                [x0, x0 + 0.6*width], [height/2, height/2], color=self._colors[1],
+                alpha=0.5)
+            defective_text = mpl.text.Text(
+                x=x0 + 0.8*width, y=0,
+                text=str(round(self._velocities[1], 2)) + ";")
+
+            handlebox.add_artist(v)
+            handlebox.add_artist(defectless_line)
+            handlebox.add_artist(defectless_text)
+            handlebox.add_artist(defective_line)
+            handlebox.add_artist(defective_text)
 
 
 class _DefaultFloatLogSlider(FloatLogSlider):
