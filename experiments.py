@@ -17,6 +17,7 @@ import copy
 
 
 # TODO Render labels and legends with LaTeX
+# TODO faire un map_to comme matplotlib legend pour maps widget to translcation model parameter (for ex. dict {widget: Class.attribute} ou pas, réfléchis moins de 1min)
 class Experiment(ABC):
     """Base class for experiments.
 
@@ -326,6 +327,7 @@ class SC2RVsDiscSpiral(Experiment):
             # below. This is definitely ugly but it works, and I don't have time
             # to do it better right now. The width of the legend is set in 
             # ModelsHandler class definition below.
+            # TODO change ATP/Residue sign
             plt.legend(
                 [self.Models(), self.Sigmas(), self.Trajectories(), self.ATP()], 
                 ['', '', '', ''],
