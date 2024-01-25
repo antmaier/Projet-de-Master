@@ -157,19 +157,34 @@ class TranslocationModel(ABC):
                 # with parameter the sum of the leaving rates of the current
                 # state, it goes to the next state chosen with probability
                 # proportional to the leaving rates.
-                out_edges = list(
-                    self.kinetic_scheme.out_edges(state, data=True))
-                total_rate = sum(
-                    [attributes['rate']() for _, _, attributes in out_edges])
-                sojourn_time = np.random.exponential(1/total_rate)
-                chosen_edge_i = np.random.choice(
-                    list(range(len(out_edges))),
-                    p=[attributes['rate']()/total_rate
-                       for _, _, attributes in out_edges])
-                chosen_edge = out_edges[chosen_edge_i]
+                if True:
+                    out_edges = list(
+                        self.kinetic_scheme.out_edges(state, data=True))
+                    total_rate = sum(
+                        [attributes['rate']() for _, _, attributes in out_edges])
+                    sojourn_time = np.random.exponential(1/total_rate)
+                    chosen_edge_i = np.random.choice(
+                        list(range(len(out_edges))),
+                        p=[attributes['rate']()/total_rate
+                           for _, _, attributes in out_edges])
+                    chosen_edge = out_edges[chosen_edge_i]
 
-                time += sojourn_time
-                state = chosen_edge[1]
+                    time += sojourn_time
+                    state = chosen_edge[1]
+                # Alternative implementation where each reaction is run in
+                # parallel, and the first one to occur is chosen
+                else:
+                    out_edges = list(
+                        self.kinetic_scheme.out_edges(state, data=True))
+                    betas = [1/attributes['rate']()
+                             for _, _, attributes in out_edges]
+                    sojourn_times = np.random.exponential(betas)
+                    chosen_edge_i = np.argmin(sojourn_times)
+                    sojourn_time = sojourn_times[chosen_edge_i]
+                    chosen_edge = out_edges[chosen_edge_i]
+
+                    time += sojourn_time
+                    state = chosen_edge[1]
 
                 if time > max_time:
                     break
@@ -375,16 +390,6 @@ class TranslocationModel(ABC):
             n_simulations=n_simulations,
             cumulative_sums=edge_attribute,
         )
-        """# We take all step times of each simulation up to the end of the
-        # shortest simulation
-        max_time = min([trajectory['time'].iat[-1]
-                        for trajectory in trajectories])
-        times = (pd.concat(trajectories)
-                 .loc[:, 'time']
-                 .drop_duplicates()
-                 .sort_values()
-                 .reset_index(drop=True))
-        times = times[times <= max_time]"""
         # We keep only the edge_attribute and time columns and we fill
         # the dataframe at all times defined above with the last valid value
         for i in range(len(trajectories)):
@@ -529,6 +534,8 @@ class SC2R(TranslocationModel):
         ])
         return kinetic_scheme
 
+# TODO to delete?
+
 
 class SC2R2Loops(SC2R):
     """Sequential Clockwise/2-Residue Step, 2-Loops translocation model."""
@@ -623,7 +630,7 @@ class DiscSpiral(TranslocationModel):
                 'rate': lambda: self.k_flat_to_extended_down_bar})
         ])
         return kinetic_scheme
-    
+
 
 # TODO do a super class with the common part of all NonIdeal models
 class NonIdealSC2R(SC2R):
@@ -636,19 +643,20 @@ class NonIdealSC2R(SC2R):
     """
 
     def __init__(self) -> None:
-        self.reference_state = 'TTT' # State from which the out rate is computed
+        self.reference_state = 'TTT'  # State from which the out rate is computed
         self.k_out = 1
         self.k_in = 1
         super().__init__()
-    
+
     def _k_out(self, state: str) -> float:
         """Compute state out rate, constrained by the detailed balance.
-        
+
         The constraint is computed based on the main loop.
         """
         rate = self.k_out
         try:
-            path = nx.shortest_path(self._main_loop, state, self.reference_state)
+            path = nx.shortest_path(
+                self._main_loop, state, self.reference_state)
         except nx.NetworkXNoPath:
             pass
         else:
@@ -663,7 +671,7 @@ class NonIdealSC2R(SC2R):
             kinetic_scheme = DiGraph()
         # Construct main loop
         kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
-        self._main_loop = deepcopy(kinetic_scheme) # Used to compute _k_out
+        self._main_loop = deepcopy(kinetic_scheme)  # Used to compute _k_out
         # Add 'out' state
         kinetic_scheme.add_node(
             'out',
@@ -671,10 +679,12 @@ class NonIdealSC2R(SC2R):
         for node in kinetic_scheme.nodes:
             if node != 'out':
                 kinetic_scheme.add_edges_from([
-                    (node, 'out', {'rate': lambda node=node: self._k_out(node)}),
+                    (node, 'out', {
+                     'rate': lambda node=node: self._k_out(node)}),
                     ('out', node, {'rate': lambda: self.k_in})])
         return kinetic_scheme
-    
+
+
 class NonIdealDiscSpiral(DiscSpiral):
     """Non-ideal Disc-Spiral translocation model.
 
@@ -685,19 +695,20 @@ class NonIdealDiscSpiral(DiscSpiral):
     """
 
     def __init__(self) -> None:
-        self.reference_state = 'flat-ATP' # State from which the out rate is computed
+        self.reference_state = 'flat-ATP'  # State from which the out rate is computed
         self.k_out = 1
         self.k_in = 1
         super().__init__()
-    
+
     def _k_out(self, state: str) -> float:
         """Compute state out rate, constrained by the detailed balance.
-        
+
         The constraint is computed based on the main loop.
         """
         rate = self.k_out
         try:
-            path = nx.shortest_path(self._main_loop, state, self.reference_state)
+            path = nx.shortest_path(
+                self._main_loop, state, self.reference_state)
         except nx.NetworkXNoPath:
             pass
         else:
@@ -712,7 +723,7 @@ class NonIdealDiscSpiral(DiscSpiral):
             kinetic_scheme = DiGraph()
         # Construct main loop
         kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
-        self._main_loop = deepcopy(kinetic_scheme) # Used to compute _k_out
+        self._main_loop = deepcopy(kinetic_scheme)  # Used to compute _k_out
         # Add 'out' state
         kinetic_scheme.add_node(
             'out',
@@ -720,10 +731,11 @@ class NonIdealDiscSpiral(DiscSpiral):
         for node in kinetic_scheme.nodes:
             if node != 'out':
                 kinetic_scheme.add_edges_from([
-                    (node, 'out', {'rate': lambda node=node: self._k_out(node)}),
+                    (node, 'out', {
+                     'rate': lambda node=node: self._k_out(node)}),
                     ('out', node, {'rate': lambda: self.k_in})])
         return kinetic_scheme
-        
+
 
 class DefectiveSC2R(SC2R):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
@@ -975,7 +987,3 @@ class DefectiveDiscSpiral(DiscSpiral):
                 'rate': lambda: self.k_flat_to_extended_down})
         ])
         return kinetic_scheme
-
-
-
-
