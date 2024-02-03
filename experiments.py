@@ -23,6 +23,8 @@ class Experiment(ABC):
 
     An experiment contains typically a GUI and one or more plots. The GUI 
     contains widgets that can be used to change the parameters of the model.
+    Some of these parameters can be freely determined by the users, some others
+    are constraints due to physical laws (e.g. detailed balance).
     The plots are dynamically updated when the user changes the parameters.
 
     To create a new experiment, inherit from this class and implement the
@@ -251,6 +253,12 @@ class SC2RVsDiscSpiral(Experiment):
                 if isinstance(out, pd.DataFrame):
                     out = [out]
                 trajectories[model] = out
+
+            # Distribution of sojourn times at the same position
+            for model in models:
+                for trajectory in trajectories[model]:
+                    trajectory[trajectory['position'].diff() == 0]
+                    # TODO
 
         if plot_analytical_stats:
             analytical_position_stats = {model: None for model in models}
