@@ -537,7 +537,7 @@ class VelocityVsATPADPRatio(Experiment):
             # Source for ATP/ADP ratio:
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'ratio_magnitude_range': IntRangeSlider(
-                value=[1, 4], min=-2, max=6, continuous_update=False,
+                value=[1, 6], min=-2, max=6, continuous_update=False,
                 description="O(([ATP]/[ADP])/([ATP]/[ADP])|eq.):"),
             'equilibrium_atp_adp_ratio': _DefaultFloatLogSlider(
                 value=1e-5, min=-7, max=-3, readout_format='.1e',
@@ -718,7 +718,7 @@ class VelocityVsPotential(Experiment):
             # displacement size to have true potential difference)
             'unit_potential': FloatRangeSlider(
                 value=[-1, 1], min=-3, max=3, continuous_update=False,
-                description="Δu/T:"),
+                description="u/T:"),
             # Source for ATP/ADP ratio:
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'atp_adp_ratio': _DefaultFloatLogSlider(
@@ -831,6 +831,13 @@ class VelocityVsPotential(Experiment):
                                      unit_potential=unit_potential):
                             return old_rate() * np.exp(-displacement * unit_potential)
                         attributes['rate'] = new_rate
+                    # Note that this does not affect the value of the rates
+                    # constrained by the thermodynamic loop law, since they are
+                    # not stored in the kinetic_scheme graph, but are defined
+                    # in the model class. The only thing we modify is what 
+                    # function will be called when taking this edge thanks to
+                    # the way the rates in the kinectic scheme are defined (as
+                    # functions rather than values).
                 velocities[model].append(model.average_velocity())
 
         gui_plot = self._gui.children[0]
@@ -854,7 +861,7 @@ class VelocityVsPotential(Experiment):
                     label="Disc-Spiral (Δx = " + str(step_size) + " a.a.)",
                     color='#004488')
 
-            ax.set_xlabel("Δu/T")
+            ax.set_xlabel("u/T")
             ax.set_ylabel("❬v❭ [Residue ∙ k]")
             ax.legend()
             plt.show()
