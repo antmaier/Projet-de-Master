@@ -18,6 +18,7 @@ import copy
 
 # TODO Render labels and legends with LaTeX
 # TODO faire un map_to comme matplotlib legend pour maps widget to translcation model parameter (for ex. dict {widget: Class.attribute} ou pas, réfléchis moins de 1min)
+# TODO change self._ to self. everywhere, but think about it a bit before doing so
 class Experiment(ABC):
     """Base class for experiments.
 
@@ -163,62 +164,66 @@ class SC2RVsDiscSpiral(Experiment):
         }
 
     def _construct_gui(self) -> Widget:
-        gui_plot = Output()
-        gui_parameters = VBox([
-            HTML(value="<h1>SC/2R and Disc-Spiral ATP consumption rate comparison</h1>"),
+        self.gui_plot = Output()
+        self.gui_parameters = VBox([
+            HBox([
+                VBox([
+                    HTML(value="<b>Simulation Parameter</b>"),
+                    HBox([self._free_parameters['max_time'],
+                        HTML(value="Maximum simulation time")]),
+                    HBox([self._free_parameters['n_trajectories'],
+                            HTML(value="Number of trajectory samples")]),
 
-            HTML(value="<b>Simulation Parameter</b>"),
-            HBox([self._free_parameters['max_time'],
-                  HTML(value="Maximum simulation time")]),
-            HBox([self._free_parameters['n_trajectories'],
-                    HTML(value="Number of trajectory samples")]),
+                    HTML(value="<b>General Physical Parameters</b>"),
+                    HBox([self._free_parameters['atp_adp_ratio'],
+                        HTML(value="ATP/ADP concentration ratio")]),
+                    HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                        HTML(value="Equilibrium ATP/ADP concentration ratio")]),
+                    HBox([self._free_parameters['K_d_atp'],
+                        HTML(value="Protomer-ATP dissociation constant")]),
+                    HBox([self._free_parameters['K_d_adp'],
+                        HTML(value="Protomer-ADP dissociation constant")]),
+                    HBox([self._free_parameters['k_DT'],
+                        HTML(value="Effective ADP->ATP exchange rate")]),
+                    HBox([self._constrained_parameters['k_TD'],
+                        HTML(value="Effective ATP->ADP exchange rate "
+                            "(constrained by Protomer-ATP/ADP exchange model)")]),
+                    HBox([self._free_parameters['k_h'],
+                        HTML(value="ATP Hydrolysis rate")]),
+                    HBox([self._free_parameters['k_s'],
+                        HTML(value="ATP Synthesis rate")]),
+                ]),
+                VBox([
+                    HTML(value="<b>SC2R Model Physical Parameters</b>"),
+                    HBox([self._free_parameters['k_up'],
+                        HTML(value="Translocation up rate")]),
+                    HBox([self._constrained_parameters['k_down'],
+                        HTML(value="Translocation down rate "
+                            "(constrained by detailed balance)")]),
 
-            HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['atp_adp_ratio'],
-                  HTML(value="ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
-                  HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['K_d_atp'],
-                  HTML(value="Protomer-ATP dissociation constant")]),
-            HBox([self._free_parameters['K_d_adp'],
-                  HTML(value="Protomer-ADP dissociation constant")]),
-            HBox([self._free_parameters['k_DT'],
-                  HTML(value="Effective ADP->ATP exchange rate")]),
-            HBox([self._constrained_parameters['k_TD'],
-                  HTML(value="Effective ATP->ADP exchange rate "
-                       "(constrained by Protomer-ATP/ADP exchange model)")]),
-            HBox([self._free_parameters['k_h'],
-                  HTML(value="ATP Hydrolysis rate")]),
-            HBox([self._free_parameters['k_s'],
-                  HTML(value="ATP Synthesis rate")]),
-
-            HTML(value="<b>SC2R Model Physical Parameters</b>"),
-            HBox([self._free_parameters['k_up'],
-                  HTML(value="Translocation up rate")]),
-            HBox([self._constrained_parameters['k_down'],
-                  HTML(value="Translocation down rate "
-                       "(constrained by detailed balance)")]),
-
-            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self._free_parameters['n_protomers'],
-                  HTML(value="Number of protomers")]),
-            HBox([self._constrained_parameters['k_h_bar'],
-                  HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self._free_parameters['k_extended_to_flat_up'],
-                  HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_down'],
-                  HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
-                  HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_up'],
-                  HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self._constrained_parameters['k_extended_to_flat_down'],
-                  HTML(value="Spiral->disc down rate "
-                       "(constrained by detailed balance)")]),
+                    HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+                    HBox([self._free_parameters['n_protomers'],
+                        HTML(value="Number of protomers")]),
+                    HBox([self._constrained_parameters['k_h_bar'],
+                        HTML(value="Effective ATP hydrolysis rate")]),
+                    HBox([self._free_parameters['k_extended_to_flat_up'],
+                        HTML(value="Spiral->disc up translocation rate")]),
+                    HBox([self._free_parameters['k_flat_to_extended_down'],
+                        HTML(value="Disc->spiral down translocation rate")]),
+                    HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                        HTML(value="Effective disc->spiral down translocation rate")]),
+                    HBox([self._free_parameters['k_flat_to_extended_up'],
+                        HTML(value="Disc->spiral up translocation rate")]),
+                    HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                        HTML(value="Spiral->disc down rate "
+                            "(constrained by detailed balance)")]),
+                ]),
+            ]),
         ])
 
-        gui = HBox([gui_plot, gui_parameters],
-                   layout=Layout(align_items='center'))
+        gui = VBox([HTML(value="<h1>SC/2R and Disc-Spiral comparison</h1>"), 
+                    self.gui_plot, self.gui_parameters],
+            layout=Layout(align_items='center'))
 
         return gui
 
@@ -254,12 +259,6 @@ class SC2RVsDiscSpiral(Experiment):
                     out = [out]
                 trajectories[model] = out
 
-            # Distribution of sojourn times at the same position
-            for model in models:
-                for trajectory in trajectories[model]:
-                    trajectory[trajectory['position'].diff() == 0]
-                    # TODO
-
         if plot_analytical_stats:
             analytical_position_stats = {model: None for model in models}
             for model in models:
@@ -269,22 +268,24 @@ class SC2RVsDiscSpiral(Experiment):
 
         if plot_empirical_stats:
             empirical_position_stats = {model: None for model in models}
+            position_sojourn_times = {model: None for model in models}
             n_simulations = 100
             for model in models:
-                empirical_position_stats[model] = \
+                empirical_position_stats[model], position_sojourn_times[model] = \
                     model.empirical_attribute_stats(
                         'position', times=times, n_simulations=n_simulations)
 
         # Plot everything
-        gui_plot = self._gui.children[0]
-        with gui_plot:
-            gui_plot.clear_output(wait=True)
+        #gui_plot = self._gui.children[0]
+        with self.gui_plot:
+            self.gui_plot.clear_output(wait=True)
             plt.close('SC2RVsDiscSpiral')
-            fig = plt.figure('SC2RVsDiscSpiral')
+            fig = plt.figure('SC2RVsDiscSpiral', [13, 4.8])
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
-            ax = fig.add_subplot(111)
+            ax_traj = fig.add_subplot(121)
+            ax_hist = fig.add_subplot(122)
 
             yellow = '#DDAA33'
             blue = '#004488'
@@ -292,9 +293,10 @@ class SC2RVsDiscSpiral(Experiment):
             alpha_0_5 = '80'
             hidden = '#00000000'
             colors = [yellow, blue]
-            for model, color in zip(models, colors):
+            model_names = ['SC/2R', 'Disc-Spiral']
+            for model, color, model_name in zip(models, colors, model_names):
                 if plot_analytical_stats:
-                    ax.fill_between(
+                    ax_traj.fill_between(
                     analytical_position_stats[model]['time'],
                     analytical_position_stats[model]['mean'] -
                     analytical_position_stats[model]['std'],
@@ -303,39 +305,47 @@ class SC2RVsDiscSpiral(Experiment):
                     facecolor=color+alpha_0_2, edgecolor=hidden)
 
                 if plot_empirical_stats:
-                    ax.plot(
+                    ax_traj.plot(
                         empirical_position_stats[model]['time'],
                         (empirical_position_stats[model]['mean']
                             - empirical_position_stats[model]['std']),
                         color=color, linestyle='--', alpha=0.5)
-                    ax.plot(
+                    ax_traj.plot(
                         empirical_position_stats[model]['time'],
                         (empirical_position_stats[model]['mean']
                             + empirical_position_stats[model]['std']),
                         color=color, linestyle='--', alpha=0.5)
                     
+                    hist_label = (model_name 
+                                  + r' $\langle τ \rangle='
+                                  + str(round(np.mean(position_sojourn_times[model]), 2))
+                                  + '$')
+                    ax_hist.hist(position_sojourn_times[model], 
+                                 bins=10, density=True, 
+                                 edgecolor=color, facecolor=color + alpha_0_5, 
+                                 label=hist_label)
+                    
                 if plot_trajectories:
                     linewidth = 2
                     for trajectory in trajectories[model]:
-                        ax.step(trajectory['time'], trajectory['position'],
+                        ax_traj.step(trajectory['time'], trajectory['position'],
                                 where='post', color=color, alpha=1,
                                 linewidth=linewidth)
             # Average velocity
-            ax.plot(
+            ax_traj.plot(
                 [times[0], times[-1]],
                 [model.average_velocity() * times[0],
                  model.average_velocity() * times[-1]],
                 color='#BBBBBB', zorder=0, alpha=0.5)
 
-            ax.set_xlabel('Time [a.u.]')
-            ax.set_ylabel('Position [#Residue]')
+            ax_traj.set_xlabel('Time [a.u.]')
+            ax_traj.set_ylabel('Position [#Residue]')
 
             # Very ugly code for custom legend. We use Handlerclasses defined
             # below. This is definitely ugly but it works, and I don't have time
             # to do it better right now. The width of the legend is set in 
             # ModelsHandler class definition below.
-            # TODO change ATP/Residue sign
-            plt.legend(
+            ax_traj.legend(
                 [self.Models(), self.Sigmas(), self.Trajectories(), self.ATP()], 
                 ['', '', '', ''],
                 handler_map={
@@ -344,6 +354,12 @@ class SC2RVsDiscSpiral(Experiment):
                     self.Trajectories: self.TrajectoriesHandler(),
                     self.ATP: self.ATPHandler(models)}
             )
+            ax_hist.set_xlabel('Time [a.u.]')
+            ax_hist.set_ylabel('Density')
+            ax_hist.set_title('Position sojourn time histogram')
+            ax_hist.legend()
+
+
 
             plt.show()
 
@@ -1001,7 +1017,7 @@ class DefectlessVsDefective(Experiment):
             empirical_position_stats = {model: None for model in models}
             n_simulations = 100
             for model in models:
-                empirical_position_stats[model] = \
+                empirical_position_stats[model], _ = \
                     model.empirical_attribute_stats(
                         'position', times=times, n_simulations=n_simulations)
 

@@ -365,19 +365,21 @@ class TranslocationModel(ABC):
 
         Return the empirical mean, standard deviation (std) and confidence 
         interval (CI) at the specified confidence level, of the specified edge 
-        attribute (e.g. 'position'), at each time in 'times'. 
+        attribute (e.g. 'position'), at each time in 'times', as well as samples
+        of sojourn times spent at the same value of the edge attribute.
         The confidence interval (CI) is computed with gaussian approximation.
 
         Args:
             edge_attribute: The edge attribute to compute the statistics of.
-            times: The time(s) to compute the statistics at.
+            times: The time(s) to compute the statistics at. For sojourn times,
+                simulations are done until the maximum time.
             confidence_level: The confidence level of the confidence interval. 
             n_simulations: The number of simulations to do to compute the
                 empirical statistics.
 
         Returns:
-            Pandas dataframe with the columns 'time', 'mean', 'std',
-            'lower_bound', 'upper_bound'.
+            [DataFrame['time', 'mean', 'std', 'lower_bound', 'upper_bound'],
+             DataFrame['sojourn_time']]
         """
         if isinstance(times, float):
             times = [times]
@@ -390,6 +392,30 @@ class TranslocationModel(ABC):
             n_simulations=n_simulations,
             cumulative_sums=edge_attribute,
         )
+        # We keep only the edge_attribute and time columns since all stats
+        # depend on these two columns only
+        for i in range(len(trajectories)):
+            trajectories[i] = trajectories[i].loc[:, ['time', edge_attribute]]
+
+        # Get edge_attribute sojourn times (i.e. time spent at a value of
+        # edge_attribute)
+        sojourn_times = []
+        for trajectory in trajectories:
+            # We keep only the times where the value of edge_attribute changes
+            # and compute the time it took to change
+            # Concatenate all the sojourn times of all simulations
+            sojourn_times.append(
+                trajectory
+                .loc[
+                    np.invert(
+                        np.isclose(
+                            trajectory[edge_attribute].diff().fillna(1), 
+                            0))]
+                .loc[:, 'time']
+                .diff()
+                .dropna())
+        sojourn_times = pd.concat(sojourn_times)
+
         # We keep only the edge_attribute and time columns and we fill
         # the dataframe at all times defined above with the last valid value
         for i in range(len(trajectories)):
@@ -409,7 +435,7 @@ class TranslocationModel(ABC):
             statistics['mean'] + q_upper * statistics['std'])
         statistics.reset_index(inplace=True)
         statistics['time'] = times
-        return statistics
+        return statistics, sojourn_times
 
     @abstractmethod
     def _construct_kinetic_scheme(
