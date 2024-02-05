@@ -276,7 +276,6 @@ class SC2RVsDiscSpiral(Experiment):
                         'position', times=times, n_simulations=n_simulations)
 
         # Plot everything
-        #gui_plot = self._gui.children[0]
         with self.gui_plot:
             self.gui_plot.clear_output(wait=True)
             plt.close('SC2RVsDiscSpiral')
@@ -517,7 +516,6 @@ class SC2RVsDiscSpiral(Experiment):
             handlebox.add_artist(defectless_text)
             handlebox.add_artist(defective_circle)
             handlebox.add_artist(defective_text)
-
 
 
 class VelocityVsATPADPRatio(Experiment):
@@ -979,7 +977,8 @@ class DefectlessVsDefective(Experiment):
                 HBox([self._constrained_parameters['k_extended_to_flat_down'],
                       HTML(value="Spiral->disc down rate "
                            "(constrained by detailed balance)")]),
-            ])])
+            ])
+        ])
 
         gui = VBox([gui_plot, gui_parameters],
                    layout=Layout(align_items='center'))
@@ -1022,9 +1021,10 @@ class DefectlessVsDefective(Experiment):
 
         if plot_empirical_stats:
             empirical_position_stats = {model: None for model in models}
+            position_sojourn_times = {model: None for model in models}
             n_simulations = 100
             for model in models:
-                empirical_position_stats[model], _ = \
+                empirical_position_stats[model], position_sojourn_times[model] = \
                     model.empirical_attribute_stats(
                         'position', times=times, n_simulations=n_simulations)
 
@@ -1033,12 +1033,14 @@ class DefectlessVsDefective(Experiment):
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('DefectlessVsDefective')
-            fig = plt.figure('DefectlessVsDefective', figsize=(10, 5))
+            fig = plt.figure('DefectlessVsDefective', figsize=(13, 10))
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
-            ax_sc2r = fig.add_subplot(121)
-            ax_disc_spiral = fig.add_subplot(122)
+            ax_sc2r_traj = fig.add_subplot(221)
+            ax_disc_spiral_traj = fig.add_subplot(222)
+            ax_sc2r_hist = fig.add_subplot(223)
+            ax_disc_spiral_hist = fig.add_subplot(224)
 
             yellow = '#DDAA33'
             blue = '#004488'
@@ -1049,15 +1051,18 @@ class DefectlessVsDefective(Experiment):
             nested_models = [[self._sc2r, self._defective_sc2r],
                              [self._disc_spiral, self._defective_disc_spiral]]
             nested_colors = [[yellow, red], [blue, red]]
-            axes = [ax_sc2r, ax_disc_spiral]
+            nested_axes = [[ax_sc2r_traj, ax_sc2r_hist], 
+                           [ax_disc_spiral_traj, ax_disc_spiral_hist]]
             names = ['SC/2R', 'Disc-Spiral']
             # First SC2R, then Disc-Spiral
-            for models, colors, ax, name in zip(
-                nested_models, nested_colors, axes, names):
+            for models, colors, axes, name in zip(
+                nested_models, nested_colors, nested_axes, names):
+                ax_traj = axes[0]
+                ax_hist = axes[1]
                 # First Non-defective, then Defective
                 for model, color in zip(models, colors):
                     if plot_analytical_stats:
-                        ax.fill_between(
+                        ax_traj.fill_between(
                             analytical_position_stats[model]['time'],
                             analytical_position_stats[model]['mean'] -
                             analytical_position_stats[model]['std'],
@@ -1066,39 +1071,44 @@ class DefectlessVsDefective(Experiment):
                             facecolor=color+alpha_0_2, edgecolor=hidden)
 
                     if plot_empirical_stats:
-                        ax.plot(
+                        ax_traj.plot(
                             empirical_position_stats[model]['time'],
                             (empirical_position_stats[model]['mean']
                              - empirical_position_stats[model]['std']),
                             color=color, linestyle='--', alpha=0.5)
-                        ax.plot(
+                        ax_traj.plot(
                             empirical_position_stats[model]['time'],
                             (empirical_position_stats[model]['mean']
                              + empirical_position_stats[model]['std']),
                             color=color, linestyle='--', alpha=0.5)
+                        
+                        ax_hist.hist(
+                            position_sojourn_times[model], bins=20, alpha=0.5,
+                            facecolor=color + alpha_0_5, edgecolor=color,
+                            label=name, density=True)
 
                     if plot_trajectories:
                         linewidth = 2
                         for trajectory in trajectories[model]:
-                            ax.step(trajectory['time'], trajectory['position'],
+                            ax_traj.step(trajectory['time'], trajectory['position'],
                                     where='post', color=color, alpha=1,
                                     linewidth=linewidth)
                     # Average velocity
-                    ax.plot(
+                    ax_traj.plot(
                         [times[0], times[-1]],
                         [model.average_velocity() * times[0],
                          model.average_velocity() * times[-1]],
                         color=color, zorder=0, alpha=0.5)
 
-                ax.set_xlabel('Time [1/k]')
-                ax.set_ylabel('Position [#Residue]')
+                ax_traj.set_xlabel('Time [1/k]')
+                ax_traj.set_ylabel('Position [#Residue]')
 
                 # Very ugly code for custom legend. We use Handlerclasses defined
                 # below. This is definitely ugly but it works, and I don't have time
                 # to do it better right now. The width of the legend is set in
                 # ModelsHandler class definition below.
                 velocities = [model.average_velocity() for model in models]
-                ax.legend(
+                ax_traj.legend(
                     [self.Models(), self.Sigmas(), self.Trajectories(), self.Velocities()],
                     ['', '', '', ''],
                     handler_map={
