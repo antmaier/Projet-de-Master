@@ -282,13 +282,12 @@ class SC2RVsDiscSpiral(Experiment):
         with self.gui_plot:
             self.gui_plot.clear_output(wait=True)
             plt.close('SC2RVsDiscSpiral')
-            fig = plt.figure('SC2RVsDiscSpiral', [8, 6])
+            fig = plt.figure('SC2RVsDiscSpiral', [7.5, 6])
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
             ax_traj = fig.add_subplot()
             ax_hist = ax_traj.inset_axes([0.55, 0.1, 0.4, 0.2])
-            # ax_hist = ax_traj.inset_axes([0.1, 0.73, 0.4, 0.2])
 
             yellow = '#DDAA33'
             blue = '#004488'
@@ -319,8 +318,7 @@ class SC2RVsDiscSpiral(Experiment):
                             + empirical_position_stats[model]['std']),
                         color=color, linestyle='--', alpha=0.5)
 
-                    hist_label = (model_name
-                                  + r' $\langle τ \rangle='
+                    hist_label = (r' $\langle τ \rangle='
                                   + str(round(np.mean(position_sojourn_times[model]), 2))
                                   + '$')
                     ax_hist.hist(position_sojourn_times[model],
@@ -359,14 +357,13 @@ class SC2RVsDiscSpiral(Experiment):
                 },
                 loc='upper left',
             )
-            ax_hist.set_xlim(-5, 45)
+            #ax_hist.set_xlim(-5, 45)
             ax_hist.set_xlabel('Time [a.u.]')
             ax_hist.set_ylabel('Density')
-            ax_hist.legend()
-            ax_hist.set_title('Translocation sojourn time')
+            ax_hist.legend(title="Sojourn time")
 
             if self.savefig:
-                plt.savefig('SC2RVsRPCL.pdf')
+                plt.savefig('images/trajectories.pdf')
             plt.show()
 
     class Models():
@@ -909,7 +906,7 @@ class VelocityVsPotential(Experiment):
             ax.legend()
 
             if self.savefig:
-                plt.savefig("velocity_vs_potential.pdf")
+                plt.savefig('images/force.pdf')
             plt.show()
 
 
@@ -921,12 +918,12 @@ class DefectlessVsDefective(Experiment):
     for all models (SC/2R and Disc-Spiral, and defectless and defective).
     """
 
-    def __init__(self):
+    def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
         self._defective_sc2r = DefectiveSC2R()
         self._disc_spiral = DiscSpiral()
         self._defective_disc_spiral = DefectiveDiscSpiral()
-        super().__init__()
+        super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
@@ -1081,7 +1078,7 @@ class DefectlessVsDefective(Experiment):
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('DefectlessVsDefective')
-            fig = plt.figure('DefectlessVsDefective', figsize=(13, 4.8))
+            fig = plt.figure('DefectlessVsDefective', figsize=(13, 6))
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -1104,7 +1101,7 @@ class DefectlessVsDefective(Experiment):
             nested_colors = [[yellow, red], [blue, red]]
             nested_axes = [[ax_sc2r_traj, ax_sc2r_hist],
                            [ax_disc_spiral_traj, ax_disc_spiral_hist]]
-            names = ['SC/2R', 'Disc-Spiral']
+            names = ['SC/2R', 'RPCL']
             # First SC2R, then Disc-Spiral
             for models, colors, axes, name in zip(
                     nested_models, nested_colors, nested_axes, names):
@@ -1134,8 +1131,7 @@ class DefectlessVsDefective(Experiment):
                             color=color, linestyle='--', alpha=0.5)
 
                         hist_label = (
-                            name
-                            + r' $\langle τ \rangle='
+                            r' $\langle τ \rangle='
                             + str(round(np.mean(position_sojourn_times[model]), 2))
                             + '$')
                         ax_hist.hist(
@@ -1179,10 +1175,10 @@ class DefectlessVsDefective(Experiment):
 
                 ax_hist.set_xlabel(r'Time [$1/k$]')
                 ax_hist.set_ylabel('Density')
-                ax_hist.legend()
-                ax_hist.set_title('Translocation sojourn time')
-            #ax_sc2r_hist.set_xlim()
+                ax_hist.legend(title="Sojourn time")
 
+            if self.savefig:
+                plt.savefig('images/defective.pdf')
             plt.show()
 
     class Models():
@@ -1213,7 +1209,7 @@ class DefectlessVsDefective(Experiment):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
             width, height = handlebox.width, handlebox.height
 
-            x0 = width
+            x0 = width/3
             defectless_circle = mpl.patches.Circle(
                 (x0 + width/2, height/2), 0.6*fontsize,
                 facecolor=self._colors[0] + '80', edgecolor=self._colors[0],
@@ -1230,7 +1226,7 @@ class DefectlessVsDefective(Experiment):
                 x=x0 + width, y=0, text='Defective')
 
             # Width of full legend handled by this parameter, ugly but it works
-            handlebox.width *= 8.7
+            handlebox.width *= 7.8
             handlebox.add_artist(defectless_circle)
             handlebox.add_artist(defectless_text)
             handlebox.add_artist(defective_circle)
@@ -1284,7 +1280,8 @@ class DefectlessVsDefective(Experiment):
             empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
                                            text='(Emp.):')
 
-            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, text='❬Pos.❭±σ')
+            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, 
+                                 text=r'$\langle X \rangle \pm \sigma$')
 
             handlebox.add_artist(defectless_triangle)
             handlebox.add_artist(defective_triangle)
@@ -1324,7 +1321,7 @@ class DefectlessVsDefective(Experiment):
                 color=self._colors[1])
 
             text = mpl.text.Text(x=1.5*width + 0*fontsize,
-                                 y=0, text='Some trajectory samples')
+                                 y=0, text='Some sample trajectories')
 
             handlebox.add_artist(defectless_1)
             handlebox.add_artist(defectless_2)
@@ -1346,7 +1343,7 @@ class DefectlessVsDefective(Experiment):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
             width, height = handlebox.width, handlebox.height
 
-            v = mpl.text.Text(x=0, y=0, text='❬v❭ =')
+            v = mpl.text.Text(x=0, y=0, text=r'$\langle v \rangle =$')
 
             x0 += 4*fontsize
             defectless_line = mpl.lines.Line2D(
@@ -1362,7 +1359,7 @@ class DefectlessVsDefective(Experiment):
                 alpha=0.5)
             defective_text = mpl.text.Text(
                 x=x0 + 0.8*width, y=0,
-                text=str(round(self._velocities[1], 2)) + ";")
+                text=str(round(self._velocities[1], 2)))
 
             handlebox.add_artist(v)
             handlebox.add_artist(defectless_line)
@@ -1373,10 +1370,10 @@ class DefectlessVsDefective(Experiment):
 
 # TODO show k_out for each state
 class NonIdeal(Experiment):
-    def __init__(self):
+    def __init__(self, savefig: bool = False):
         self._non_ideal_sc2r = NonIdealSC2R()
         self._non_ideal_disc_spiral = NonIdealDiscSpiral()
-        super().__init__()
+        super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
@@ -1520,19 +1517,21 @@ class NonIdeal(Experiment):
             fig.canvas.toolbar_visible = False
             ax = fig.add_subplot(111)
 
-            # Plot velocities vs [ATP]/[ADP]
             sc2r_plot = ax.plot(k_outs,
                                 probabilities[self._non_ideal_sc2r],
                                 label="Non-Ideal SC/2R",
                                 color='#DDAA33')
             disc_spiral_plot = ax.plot(k_outs,
                                        probabilities[self._non_ideal_disc_spiral],
-                                       label="Non-Ideal Disc-Spiral",
+                                       label="Non-Ideal RPCL",
                                        color='#004488')
 
-            ax.set_xlabel("k_out [k]")
-            ax.set_ylabel("ℙ(main loop)")
+            ax.set_xlabel(r"$k_{out} \; [k]$")
+            ax.set_ylabel(r"$\mathbb{P}(\text{main loop})$")#ℙ
             ax.legend()
+
+            if self.savefig:
+                plt.savefig('images/non_ideal.pdf')
             plt.show()
 
 
