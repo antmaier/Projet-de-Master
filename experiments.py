@@ -50,7 +50,8 @@ class Experiment(ABC):
     from free parameters, and are displayed using HTML widgets for example.
     """
 
-    def __init__(self):
+    def __init__(self, savefig: bool = False):
+        self.savefig = savefig
         self._free_parameters = self._construct_free_parameters()
         self._constrained_parameters = self._construct_constrained_parameters()
         self._gui = self._construct_gui()
@@ -123,10 +124,10 @@ class SC2RVsDiscSpiral(Experiment):
     for both models.
     """
 
-    def __init__(self):
+    def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
-        super().__init__()
+        super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
@@ -201,27 +202,27 @@ class SC2RVsDiscSpiral(Experiment):
                         HTML(value="Translocation down rate "
                             "(constrained by detailed balance)")]),
 
-                    HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+                    HTML(value="<b>RPCL Model Physical Parameters</b>"),
                     HBox([self._free_parameters['n_protomers'],
                         HTML(value="Number of protomers")]),
                     HBox([self._constrained_parameters['k_h_bar'],
                         HTML(value="Effective ATP hydrolysis rate")]),
                     HBox([self._free_parameters['k_extended_to_flat_up'],
-                        HTML(value="Spiral->disc up translocation rate")]),
+                        HTML(value="Upward contraction rate")]),
                     HBox([self._free_parameters['k_flat_to_extended_down'],
-                        HTML(value="Disc->spiral down translocation rate")]),
+                        HTML(value="Downward extension rate")]),
                     HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
-                        HTML(value="Effective disc->spiral down translocation rate")]),
+                        HTML(value="Effective downward extension rate")]),
                     HBox([self._free_parameters['k_flat_to_extended_up'],
-                        HTML(value="Disc->spiral up translocation rate")]),
+                        HTML(value="Upward extension rate")]),
                     HBox([self._constrained_parameters['k_extended_to_flat_down'],
-                        HTML(value="Spiral->disc down rate "
-                            "(constrained by detailed balance)")]),
+                        HTML(value="Downward contraction rate "
+                            "(constrained by thermodynamic loop law)")]),
                 ]),
             ]),
         ])
 
-        gui = VBox([HTML(value="<h1>SC/2R and Disc-Spiral comparison</h1>"), 
+        gui = VBox([HTML(value="<h1>SC/2R and RPCL comparison</h1>"), 
                     self.gui_plot, self.gui_parameters],
             layout=Layout(align_items='center'))
 
@@ -279,12 +280,12 @@ class SC2RVsDiscSpiral(Experiment):
         with self.gui_plot:
             self.gui_plot.clear_output(wait=True)
             plt.close('SC2RVsDiscSpiral')
-            fig = plt.figure('SC2RVsDiscSpiral', [13, 4.8])
+            fig = plt.figure('SC2RVsDiscSpiral', [8, 6])
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
-            ax_traj = fig.add_subplot(121)
-            ax_hist = fig.add_subplot(122)
+            ax_traj = fig.add_subplot()
+            ax_hist = ax_traj.inset_axes([0.55, 0.1, 0.4, 0.2])
 
             yellow = '#DDAA33'
             blue = '#004488'
@@ -292,7 +293,7 @@ class SC2RVsDiscSpiral(Experiment):
             alpha_0_5 = '80'
             hidden = '#00000000'
             colors = [yellow, blue]
-            model_names = ['SC/2R', 'Disc-Spiral']
+            model_names = ['SC/2R', 'RPCL']
             for model, color, model_name in zip(models, colors, model_names):
                 if plot_analytical_stats:
                     ax_traj.fill_between(
@@ -338,7 +339,7 @@ class SC2RVsDiscSpiral(Experiment):
                 color='#BBBBBB', zorder=0, alpha=0.5)
 
             ax_traj.set_xlabel('Time [a.u.]')
-            ax_traj.set_ylabel('Position [#Residue]')
+            ax_traj.set_ylabel('Translocation [#Residue]')
 
             # Very ugly code for custom legend. We use Handlerclasses defined
             # below. This is definitely ugly but it works, and I don't have time
@@ -353,13 +354,15 @@ class SC2RVsDiscSpiral(Experiment):
                     self.Trajectories: self.TrajectoriesHandler(),
                     self.ATP: self.ATPHandler(models)}
             )
+            ax_hist.set_xlim(-5, 45)
             ax_hist.set_xlabel('Time [a.u.]')
             ax_hist.set_ylabel('Density')
-            ax_hist.set_title('Position sojourn time histogram')
             ax_hist.legend()
+            ax_hist.set_title('Translocation sojourn time')
 
 
-
+            if self.savefig:
+                plt.savefig('SC2RVsRPCL.pdf')
             plt.show()
 
     class Models():
@@ -396,7 +399,7 @@ class SC2RVsDiscSpiral(Experiment):
                 facecolor='#00448880', edgecolor='#004488', 
                 transform=handlebox.get_transform())
             disc_spiral_text = mpl.text.Text(x=x0 + 1.5*width + 5*fontsize, y=0,
-                                             text='Disc-Spiral')
+                                             text='RPCL')
 
             handlebox.width *= 8.7  # Width of full legend handled by this parameter, ugly but it works
             handlebox.add_artist(sc2r_circle)
@@ -437,7 +440,7 @@ class SC2RVsDiscSpiral(Experiment):
             empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
                                            text='(Emp.):')
 
-            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, text='❬Pos.❭±σ')
+            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, text=r'$\langle X \rangle \pm \sigma$')#❬Pos.❭±σ
 
             handlebox.add_artist(upper_triangle)
             handlebox.add_artist(lower_triangle)
@@ -471,7 +474,7 @@ class SC2RVsDiscSpiral(Experiment):
                 [2*width/3, width], [2*height/3, 2*height/3], color='#004488')
 
             text = mpl.text.Text(x=1.5*width + 0*fontsize,
-                                 y=0, text='Some trajectory samples')
+                                 y=0, text='Some sample trajectories')
 
             handlebox.add_artist(sc2r_1)
             handlebox.add_artist(sc2r_2)
@@ -491,9 +494,9 @@ class SC2RVsDiscSpiral(Experiment):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
             width, height = handlebox.width, handlebox.height
 
-            r_atp = mpl.text.Text(x=0, y=0, text=r'$\frac{\text{#ATP}}{\text{Residue}}=$')
+            r_atp = mpl.text.Text(x=0, y=0, text=r'$\frac{\text{#ATP}}{\text{#Residue}}=$')
 
-            x0 += 4*fontsize
+            x0 += 5*fontsize
             defectless_circle = mpl.patches.Circle(
                 (x0 + width/2, height/2), 0.6*fontsize, facecolor='#DDAA3380',
                 edgecolor='#DDAA33', transform=handlebox.get_transform())

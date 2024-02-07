@@ -331,6 +331,7 @@ class TranslocationModel(ABC):
         """
         if isinstance(times, float):
             times = [times]
+        times = np.array(times)
 
         mean = 0
         var = 0
