@@ -856,11 +856,40 @@ class VelocityVsPotential(Experiment):
                     velocities[self._sc2r],
                     label="SC/2R (Δx = 2 a.a.)",
                     color='#DDAA33')
+            sc2r_saturation_minus = (
+                2 * self._sc2r.k_h * self._sc2r.k_DT
+                / (self._sc2r.k_h + self._sc2r.k_DT + self._sc2r.k_TD))
+            sc2r_saturation_plus = (
+                -2 * self._sc2r.k_s * self._sc2r.k_TD
+                / (self._sc2r.k_s + self._sc2r.k_TD + self._sc2r.k_h))
+            ax.axhline(sc2r_saturation_minus, color='#DDAA33', linestyle='--', zorder=0, label="saturation")
+            ax.axhline(sc2r_saturation_plus, color='#DDAA33', linestyle=(2, (4, 1)), zorder=0)
+
             step_size = (self._disc_spiral.n_protomers - 1) * 2
             disc_spiral_plot = ax.plot(unit_potentials,
                     velocities[self._disc_spiral],
                     label="Disc-Spiral (Δx = " + str(step_size) + " a.a.)",
                     color='#004488')
+            disc_spiral_saturation_minus = (
+                step_size 
+                * self._disc_spiral.k_h_bar * self._disc_spiral.k_DT * self._disc_spiral.k_extended_to_flat_up
+                / (self._disc_spiral.k_DT * self._disc_spiral.k_extended_to_flat_up
+                   + self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
+                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_TD
+                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_extended_to_flat_up
+                   + self._disc_spiral.k_DT * self._disc_spiral.k_flat_to_extended_down_bar
+                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_DT))
+            disc_spiral_saturation_plus = (
+                -step_size 
+                * self._disc_spiral.k_s * self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
+                / (self._disc_spiral.k_s * self._disc_spiral.k_extended_to_flat_up
+                   + self._disc_spiral.k_s * self._disc_spiral.k_TD
+                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_TD
+                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_extended_to_flat_up
+                   + self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
+                   + self._disc_spiral.k_s * self._disc_spiral.k_flat_to_extended_down_bar))
+            ax.axhline(disc_spiral_saturation_minus, color='#004488', linestyle='--', zorder=0, label="saturation")
+            ax.axhline(disc_spiral_saturation_plus, color='#004488', linestyle='--', zorder=0)
 
             ax.set_xlabel("u/T")
             ax.set_ylabel("❬v❭ [Residue ∙ k]")
