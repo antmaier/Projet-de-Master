@@ -532,10 +532,10 @@ class VelocityVsATPADPRatio(Experiment):
     values of [ATP]/[ADP] ratio.
     """
 
-    def __init__(self):
+    def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
         self._disc_spiral = DiscSpiral()
-        super().__init__()
+        super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
         return {
@@ -673,7 +673,7 @@ class VelocityVsATPADPRatio(Experiment):
                     color='#DDAA33')
             ax.plot(atp_adp_ratios / self._disc_spiral.equilibrium_atp_adp_ratio,
                     velocities[self._disc_spiral],
-                    label='Disc-Spiral',
+                    label='RPCL',
                     color='#004488')
             ax.set_xscale('log')
 
@@ -698,9 +698,14 @@ class VelocityVsATPADPRatio(Experiment):
                 ax.axvline(1, ymin=ymin, ymax=y0, color='#BBBBBB',
                            linestyle='--', zorder=0, label="Cross (1, 0)")
 
-            ax.set_xlabel("([ATP]/[ADP])/([ATP]/[ADP])|eq.")
-            ax.set_ylabel("❬v❭ [Residue ∙ k]")
+            ax.set_xlabel(r"$\left. \frac{[\text{ATP}]}{[\text{ADP}]} \middle/ \left.\frac{[\text{ATP}]}{[\text{ADP}]}\right|_{eq.} \right.$",
+                          fontsize=14)
+            ax.set_ylabel(r"$\langle v \rangle \; [\text{Residue} \cdot k]$")
             ax.legend()
+            plt.tight_layout()
+
+            if self.savefig:
+                plt.savefig('images/velocity_vs_atp_adp_ratio.pdf')
             plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
             # not in the gui, but below and is not updated but instead a new
             # plot is displayed everytime a value changes
