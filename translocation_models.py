@@ -11,8 +11,6 @@ from abc import ABC, abstractmethod
 from itertools import pairwise
 from copy import deepcopy
 
-# TODO when doing examples or docstring, emphasis that node/edge attributes are FUNCTIONS not values
-# and then we have to call them with () to get the value
 # TODO modify detailed balance equations to avoid atp_adp_ratio to explicitely appear
 
 
@@ -20,46 +18,72 @@ class TranslocationModel(ABC):
     """A translocation model defined by a kinetic scheme.
 
     The kinetic scheme is a directed graph where the nodes are the states of
-    the system and the edges are the reactions. The nodes have a 'probability'
-    attribute, which is the probability of the steady-state system to be in
-    this state. The directed edges have a 'rate' attribute, which is the rate
-    of the reaction. Edges may have other attributes indicating the evolution of
-    other physical quantities, such as 'ATP' or 'position'.
-    'rate' and 'probability' attributes are functions that return the value of
-    the rate/probability dynamically. This means that if the quantity depends on
-    a physical parameter the value of the quantity will be updated when the 
-    physical parameter is modified.
+    the system and the edges are the physical/chemical reactions, jumping from 
+    one state to another.
+    The nodes have a 'probability' attribute, which is the probability of the 
+    steady-state system to be in this state. The directed edges have a 'rate' 
+    attribute, which is the rate of the reaction. Edges may have other 
+    attributes, such as 'ATP' or 'position' indicating the amount the 
+    corresponding physical quantity is modified when this reaction occurs.
+
+    A TranslocationModel also has physical parameters:
+        - atp_adp_ratio: The ATP/ADP ratio.
+        - equilibrium_atp_adp_ratio: The equilibrium ATP/ADP concentration ratio.
+        - K_d_atp: The protomer-ATP dissociation constant.
+        - K_d_adp: The protomer-ADP dissociation constant.
+        - k_DT: Effective ADP->ATP exchange rate.
+        - k_TD: Effective ATP->ADP exchange rate.
+        - k_h: The ATP hydrolysis rate.
+        - k_s: The ATP synthesis rate.
+    In all generality, a reaction is distinct from its reaction rate. Therefore,
+    reaction rates are class attributes/properties defined at the 
+    TranslocationModel class level, and the 'rate' property of the edges are 
+    functions that return the correct reaction rate. The syntax to access a 
+    the rate of an edge is thus `edge['rate']()`, with the parenthesis at the 
+    end. 
+    This is useful for example when a reaction on the kinetic scheme has its 
+    rate modified but some others are left inchanged, so that the physical
+    quantity (the class attribute/property) is left unchanged, and one 
+    assigns a new function to the 'rate' attribute of the corresponding edge
+    in the kinetic scheme. An exemple of such a situation is when we apply an
+    external force on the HSP100, which adds a Boltzmann factor to the 
+    translocation reaction rate.
+    This implementation choice also implies that when a physical parameter is 
+    modified, the kinetic scheme is dynamically updated.
 
     The translocation model is a stochastic process. It can be simulated using
-    the Gillespie algorithm. The stochastic process is a single particle
-    evoluting on the kinetic scheme. 
+    the Gillespie algorithm, to simulates the evolution of a single particle on
+    the kinetic scheme.
 
-    We are interested in the position of the particle over time, for various
-    models such as 'Sequential Clockwise/2-Residue Step' or 'Disc-Spiral'.
+    TranslocationModel is an abstract class, a model is a subclass of it. 
+    It must implement the _construct_kinetic_scheme method, which constructs 
+    the kinetic scheme of the model, and define its own parameters before 
+    calling the __super__ constructor. The kinetic scheme is then automatically 
+    constructed in the TranslocationModel class.
 
-    A model is a subclass of TranslocationModel. It must implement the 
-    _construct_kinetic_scheme method, which constructs the kinetic scheme of
-    the model, and define its own parameters before calling the __super__
-    constructor. The kinetic scheme is then automatically constructed in the 
-    TranslocationModel class, accessible in the kinetic_scheme attribute.
+    The models already implemented are:
+    - Sequential Clockwise/2-Residue Step (SC2R)
+    - Random Protomer Concertina Locomotion (RPCL)
+    and their variant:
+    - Defective: one protomer has a reduced hydrolysis rate
+    - NonIdeal: all the states of the kinetic scheme are ocnnected to a new 
+        state called 'out' representing any state not considered in the model
+        decription.
 
-    Physical parameters:
-        atp_adp_ratio: The ATP/ADP ratio.
-        equilibrium_atp_adp_ratio: The equilibrium ATP/ADP concentration ratio.
-        K_d_atp: The protomer-ATP dissociation constant.
-        K_d_adp: The protomer-ADP dissociation constant.
-        k_DT: Effective ADP->ATP exchange rate.
-        k_TD: Effective ATP->ADP exchange rate.
-        k_h: The ATP hydrolysis rate.
-        k_s: The ATP synthesis rate.
-
+    There are two types of physical parameters: free and constrained. The free
+    parameters are self-explanatory, they can be freely set by the user. 
+    Constrained parameters are constrained by a physical equation (e.g. a
+    thermodynamic loop). 
+    Free parameters are class attributes, whereas constrained parameters are
+    class properties (without setter) where the core of the getter computes the 
+    constrained value from the current value of the free parameters.
 
     Remark for code maintainers:
     The way it is implemented right now, the probabilities are computed each
-    time they are needed. If the models become more complex, it may be a costly
-    operation. It may be better to store the probabilities somewhere and update
-    them automatically when any physical parameter is modified.
-    For the models we have right now, it is not a problem.
+    time a 'probability' node attribute is called. If the models become more 
+    complex, it may be a costly operation. It may be better to store the 
+    probabilities somewhere and update them automatically when any physical 
+    parameter is modified. For the models we have right now, it is not a problem.
     """
 
     def __init__(self, atp_adp_ratio: float = 10,):
