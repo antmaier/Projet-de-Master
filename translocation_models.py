@@ -610,43 +610,43 @@ class SC2R2Loops(SC2R):
         return kinetic_scheme
 
 
-class DiscSpiral(TranslocationModel):
-    """Disc-Spiral translocation model.
+class RPCL(TranslocationModel):
+    """Random Protomer Concertina Locomotion translocation model.
 
     Physical parameters:
-        k_[extended/flat]_to_[flat/extended]_[up/down]
+        k_[up/down]_[extend/contract]: Translocation rates.
     """
 
     def __init__(self, atp_adp_ratio: float = 10, n_protomers: int = 6) -> None:
         self.n_protomers = n_protomers
-        self.k_extended_to_flat_up = 1  # Spiral->disc up translocation rate
-        self.k_flat_to_extended_down = 1  # Disc->spiral down translocation rate
-        self.k_flat_to_extended_up = 1  # Disc->spiral up translocation rate
+        self.k_up_contract = 1  # Upward contraction translocation rate
+        self.k_down_extend = 1  # Downward extension translocation rate
+        self.k_up_extend = 1  # Upward extension translocation rate
         super().__init__(atp_adp_ratio)
 
     @property
     def k_h_bar(self) -> float:
-        """Effective ATP hydrolisis rate.
+        """Effective ATP hydrolysis rate.
 
-        Each protomer contributes k_h to the effective hydrolisis rate.
+        Each protomer contributes k_h to the effective hydrolysis rate.
         """
         return self.n_protomers * self.k_h
 
     @property
-    def k_flat_to_extended_down_bar(self) -> float:
-        """Effective disc->spiral down translocation rate.
+    def k_down_extend_bar(self) -> float:
+        """Effective downward extension translocation rate.
 
-        Each protomer contributes k_flat_to_extended_down to the effective 
+        Each protomer contributes k_down_extend to the effective 
         translocation rate.
         """
-        return self.n_protomers * self.k_flat_to_extended_down
+        return self.n_protomers * self.k_down_extend
 
     @property
-    def k_extended_to_flat_down(self) -> float:
-        """Spiral->disc down translocation rate, constrained by the detailed balance."""
-        return ((self.k_h * self.k_flat_to_extended_up * self.k_DT
-                 * self.k_extended_to_flat_up)
-                / (self.k_s * self.k_TD * self.k_flat_to_extended_down)
+    def k_down_contract(self) -> float:
+        """Downward contraction translocation rate, constrained by the detailed balance."""
+        return ((self.k_h * self.k_up_extend * self.k_DT
+                 * self.k_up_contract)
+                / (self.k_s * self.k_TD * self.k_down_extend)
                 * (self.equilibrium_atp_adp_ratio / self.atp_adp_ratio))
 
     def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
@@ -654,31 +654,31 @@ class DiscSpiral(TranslocationModel):
         if not kinetic_scheme:
             kinetic_scheme = DiGraph()
         kinetic_scheme.add_nodes_from([
-            ('flat-ATP', {'probability':
-                          lambda: self._compute_probabilities()['flat-ATP']}),
-            ('flat-ADP', {'probability':
-                          lambda: self._compute_probabilities()['flat-ADP']}),
+            ('contracted-ATP', {'probability':
+                          lambda: self._compute_probabilities()['contracted-ATP']}),
+            ('contracted-ADP', {'probability':
+                          lambda: self._compute_probabilities()['contracted-ADP']}),
             ('extended-ADP', {'probability':
                               lambda: self._compute_probabilities()['extended-ADP']}),
             ('extended-ATP', {'probability':
                               lambda: self._compute_probabilities()['extended-ATP']})
         ])
-        kinetic_scheme.add_edges_from([  # ⤴⤵⤷↳↱
-            ('flat-ATP', 'flat-ADP',
+        kinetic_scheme.add_edges_from([
+            ('contracted-ATP', 'contracted-ADP',
              {'rate': lambda: self.k_h_bar, 'ATP': -1}),
-            ('flat-ADP', 'flat-ATP', {'rate': lambda: self.k_s, 'ATP': 1}),
-            ('flat-ADP', 'extended-ADP', {  # k_⤴
-                'rate': lambda: self.k_flat_to_extended_up,
+            ('contracted-ADP', 'contracted-ATP', {'rate': lambda: self.k_s, 'ATP': 1}),
+            ('contracted-ADP', 'extended-ADP', {
+                'rate': lambda: self.k_up_extend,
                 'position': 2*(self.n_protomers-1)}),
-            ('extended-ADP', 'flat-ADP', {  # k_↳
-                'rate': lambda: self.k_extended_to_flat_down,
+            ('extended-ADP', 'contracted-ADP', {
+                'rate': lambda: self.k_down_contract,
                 'position': -2*(self.n_protomers-1)}),
             ('extended-ADP', 'extended-ATP', {'rate': lambda: self.k_DT}),
             ('extended-ATP', 'extended-ADP', {'rate': lambda: self.k_TD}),
-            ('extended-ATP', 'flat-ATP', {  # k_↱
-                'rate': lambda: self.k_extended_to_flat_up}),
-            ('flat-ATP', 'extended-ATP', {  # k_⤵
-                'rate': lambda: self.k_flat_to_extended_down_bar})
+            ('extended-ATP', 'contracted-ATP', {
+                'rate': lambda: self.k_up_contract}),
+            ('contracted-ATP', 'extended-ATP', {
+                'rate': lambda: self.k_down_extend_bar})
         ])
         return kinetic_scheme
 
@@ -736,8 +736,8 @@ class NonIdealSC2R(SC2R):
         return kinetic_scheme
 
 
-class NonIdealDiscSpiral(DiscSpiral):
-    """Non-ideal Disc-Spiral translocation model.
+class NonIdealRPCL(RPCL):
+    """Non-ideal RPCL translocation model.
 
     Non-ideal in the sense that at each state, there is a probability to
     leave the main loop, to a effective state 'out'.
@@ -746,7 +746,7 @@ class NonIdealDiscSpiral(DiscSpiral):
     """
 
     def __init__(self) -> None:
-        self.reference_state = 'flat-ATP'  # State from which the out rate is computed
+        self.reference_state = 'contracted-ATP'  # State from which the out rate is computed
         self.k_out = 1
         self.k_in = 1
         super().__init__()
@@ -792,7 +792,7 @@ class DefectiveSC2R(SC2R):
     """Sequential Clockwise/2-Residue Step with one defective protomer.
 
     Single-loop-like translocation model with one defective protomer. The 
-    defective protomer has an hydrolisis rate that is defect_factor times 
+    defective protomer has an hydrolysis rate that is defect_factor times 
     smaller than the other protomers.
 
     The states are defined by the ADP/ATP-state of the protomer and the 
@@ -816,8 +816,8 @@ class DefectiveSC2R(SC2R):
         """Initialize the defective translocation model.
 
         Args:
-            defect_factor: The factor by which the defective protomer hydrolisis
-                rate is smaller than the other protomers hydrolisis rate.
+            defect_factor: The factor by which the defective protomer hydrolysis
+                rate is smaller than the other protomers hydrolysis rate.
             atp_adp_ratio: The ATP/ADP ratio.
             n_protomers: The number of protomers.
         """
@@ -827,7 +827,7 @@ class DefectiveSC2R(SC2R):
 
     @property
     def k_h_defect(self) -> float:
-        """ATP hydrolisis rate of the defective protomer."""
+        """ATP hydrolysis rate of the defective protomer."""
         return self.defect_factor * self.k_h
 
     @property
@@ -915,22 +915,22 @@ class DefectiveSC2R(SC2R):
         return kinetic_scheme
 
 
-class DefectiveDiscSpiral(DiscSpiral):
-    """Disc-spiral model with one protomer with defective hydrolisis.
+class DefectiveRPCL(RPCL):
+    """RPCL model with one protomer with defective hydrolysis.
 
-    The defective protomer has an hydrolisis rate that is defect_factor times 
+    The defective protomer has an hydrolysis rate that is defect_factor times 
     smaller than the other protomers.
 
     The states in defect-free loops are denoted by:
-        'flat-ATP', 'flat-ADP', 'extended-ATP', 'extended-ADP'
+        'contracted-ATP', 'contracted-ADP', 'extended-ATP', 'extended-ADP'
     and in the defective loop by:
-        'flat-ADP-defect', 'extended-ATP-defect', 'extended-ADP-defect'
+        'contracted-ADP-defect', 'extended-ATP-defect', 'extended-ADP-defect'
 
     There are n_protomers-1 defect-free loops and one defective loop. For 
     simplicity of the code, we aggregate all the defect-free loops together in a
-    single loop with an effective hydrolisis rate k_h_bar = (n_protomers-1)*k_h, 
-    and an effective disc->spiral down translocation rate 
-    k_flat_to_extended_down_bar = (n_protomers-1)*k_flat_to_extended_down.
+    single loop with an effective hydrolysis rate k_h_bar = (n_protomers-1)*k_h, 
+    and an effective downward extension translocation rate 
+    k_down_extend_bar = (n_protomers-1)*k_down_extend_bar.
     """
 
     def __init__(
@@ -942,17 +942,18 @@ class DefectiveDiscSpiral(DiscSpiral):
         """Initialize the defective translocation model.
 
         Args:
-            defect_factor: The factor by which the defective protomer hydrolisis
-                rate is smaller than the other protomers hydrolisis rate.
+            defect_factor: The factor by which the defective protomer hydrolysis
+                rate is smaller than the other protomers hydrolysis rate.
         """
         self.defect_factor = defect_factor
         super().__init__(atp_adp_ratio, n_protomers)
 
     @property
     def k_h_defect(self) -> float:
-        """ATP hydrolisis rate of the defective protomer."""
+        """ATP hydrolysis rate of the defective protomer."""
         return self.defect_factor * self.k_h
 
+    # TODO delete to stay consistent with the report
     @property
     def k_s_defect(self) -> float:
         """ATP synthesis rate of the defective protomer."""
@@ -960,24 +961,24 @@ class DefectiveDiscSpiral(DiscSpiral):
 
     @property
     def k_h_bar(self) -> float:
-        """Effective ATP hydrolisis rate for defect-free loop.
+        """Effective ATP hydrolysis rate for defect-free loop.
 
-        Each defect-free protomer contributes k_h to the effective hydrolisis 
+        Each defect-free protomer contributes k_h to the effective hydrolysis 
         rate.
         """
         return (self.n_protomers - 1) * self.k_h
 
     @property
-    def k_flat_to_extended_down_bar(self) -> float:
-        """Effective disc->spiral down translocation rate.
+    def k_down_extend_bar(self) -> float:
+        """Effective downward extension translocation rate.
 
-        Each defect-free protomer contributes k_flat_to_extended_down to the 
+        Each defect-free protomer contributes k_down_extend to the 
         effective translocation rate.
         """
-        return (self.n_protomers - 1) * self.k_flat_to_extended_down
+        return (self.n_protomers - 1) * self.k_down_extend
 
-    # No need to redefine k_extended_to_flat_down, the detailed balance
-    # constraint is the same as in the defect-free case.
+    # No need to redefine k_down_contract, the detailed balance constraint is 
+    # the same as in the defect-free case.
 
     def probabilities_defect_ignored(self) -> dict[str, float]:
         """Compute the total probabilities to be in each defect-ignored state.
@@ -985,13 +986,13 @@ class DefectiveDiscSpiral(DiscSpiral):
         Defect-ignored mean that we do not differenciate the defect-free 
         protomers from the defective one.
         The states are then:
-            'flat-ATP', 'flat-ADP', 'extended-ATP', 'extended-ADP'
+            'contracted-ATP', 'contracted-ADP', 'extended-ATP', 'extended-ADP'
         """
         probabilities = self._compute_probabilities()
         probabilities_defect_ignored = {
-            'flat-ATP': probabilities['flat-ATP'],
-            'flat-ADP': (probabilities['flat-ADP']
-                         + probabilities['flat-ADP-defect']),
+            'contracted-ATP': probabilities['contracted-ATP'],
+            'contracted-ADP': (probabilities['contracted-ADP']
+                         + probabilities['contracted-ADP-defect']),
             'extended-ATP': (probabilities['extended-ATP']
                              + probabilities['extended-ATP-defect']),
             'extended-ADP': (probabilities['extended-ADP']
@@ -1005,9 +1006,9 @@ class DefectiveDiscSpiral(DiscSpiral):
         kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
         # Defective loop
         kinetic_scheme.add_nodes_from([
-            ('flat-ADP-defect',
+            ('contracted-ADP-defect',
              {'probability':
-                 lambda: self._compute_probabilities()['flat-ADP-defect']}),
+                 lambda: self._compute_probabilities()['contracted-ADP-defect']}),
             ('extended-ATP-defect',
              {'probability':
                  lambda: self._compute_probabilities()['extended-ATP-defect']}),
@@ -1016,25 +1017,25 @@ class DefectiveDiscSpiral(DiscSpiral):
                  lambda: self._compute_probabilities()['extended-ADP-defect']})
         ])
         kinetic_scheme.add_edges_from([
-            ('flat-ATP', 'flat-ADP-defect', {  # Defective hydrolisis
+            ('contracted-ATP', 'contracted-ADP-defect', {  # Defective hydrolysis
                 'rate': lambda: self.k_h_defect,
                 'ATP': -1}),
-            ('flat-ADP-defect', 'flat-ATP', {  # Defective synthesis
+            ('contracted-ADP-defect', 'contracted-ATP', {  # Defective synthesis
                 'rate': lambda: self.k_s_defect,
                 'ATP': 1}),
-            ('flat-ADP-defect', 'extended-ADP-defect', {  # k_⤴
-                'rate': lambda: self.k_flat_to_extended_up,
+            ('contracted-ADP-defect', 'extended-ADP-defect', {
+                'rate': lambda: self.k_up_extend,
                 'position': 2*(self.n_protomers-1)}),
-            ('extended-ADP-defect', 'flat-ADP-defect', {  # k_↳
-                'rate': lambda: self.k_extended_to_flat_down,
+            ('extended-ADP-defect', 'contracted-ADP-defect', {
+                'rate': lambda: self.k_down_contract,
                 'position': -2*(self.n_protomers-1)}),
             ('extended-ADP-defect', 'extended-ATP-defect', {  # ADP->ATP exchange
                 'rate': lambda: self.k_DT}),
             ('extended-ATP-defect', 'extended-ADP-defect', {  # ATP->ADP exchange
                 'rate': lambda: self.k_TD}),
-            ('extended-ATP-defect', 'flat-ATP', {  # k_↱
-                'rate': lambda: self.k_extended_to_flat_up}),
-            ('flat-ATP', 'extended-ATP-defect', {  # k_⤵
-                'rate': lambda: self.k_flat_to_extended_down})
+            ('extended-ATP-defect', 'contracted-ATP', {
+                'rate': lambda: self.k_up_contract}),
+            ('contracted-ATP', 'extended-ATP-defect', {
+                'rate': lambda: self.k_down_extend})
         ])
         return kinetic_scheme
