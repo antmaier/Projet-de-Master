@@ -11,8 +11,6 @@ from abc import ABC, abstractmethod
 from itertools import pairwise
 from copy import deepcopy
 
-# TODO modify detailed balance equations to avoid atp_adp_ratio to explicitely appear
-
 
 class TranslocationModel(ABC):
     """A translocation model defined by a kinetic scheme.
@@ -227,65 +225,6 @@ class TranslocationModel(ABC):
             out = results
 
         return out
-
-    # TODO maybe delete?
-    def plot_position_evolution(
-        self,
-        trajectory: pd.DataFrame | list[pd.DataFrame],
-        time_unit: str = "a.u.",
-        position_unit: str = "Residues",
-        title: str | None = None,
-        kinetic_scheme_image_path: str | None = None,
-        ax: mpl.axes.Axes | None = None,
-    ) -> mpl.axes.Axes:
-        """Plot the evolution of the position.
-
-        Plot the expected position given by the average velocity.
-
-        Args:
-            trajectory: Position and step time at every changement of the 
-                position (in residues, not steps). It must have these two
-                columns: 'time' and 'position'. It can also be a list of
-                dataframes, one for each simulation. In this case, every 
-                trajectory is plotted on the same axes.
-            time_unit: Unit of the time (x-)axis
-            position_unit: Unit of the position (y-)axis
-            title: The title of the plot. If None, no title is added.
-            kinetic_scheme_image_path: If given, will add the image of the
-                kinetic scheme on the plot.
-            ax: The axes where to plot. If None, a new axes is created.
-
-        Returns:
-            The axes with the plot.
-        """
-        if not ax:
-            _, ax = plt.subplots()
-
-        # Single or multiple trajectories handled the same way in a list
-        trajectories = (
-            trajectory
-            if isinstance(trajectory, list)
-            else [trajectory])
-        for i, trajectory in enumerate(trajectories):
-            label = "From Gillespie algorithm" if i == 0 else None
-            ax.step(trajectory['time'], trajectory['position'],
-                    where="post", label=label, color='C0')
-        ax.plot(trajectories[0]['time'],
-                trajectories[0]['time'] * self.average_velocity(),
-                label="From average velocity", color='C3')
-        ax.set_xlabel("Time" + " [" + time_unit + "]")
-        ax.set_ylabel("Position" + " [" + position_unit + "]")
-        ax.legend()
-        if kinetic_scheme_image_path:
-            img = np.asarray(Image.open(kinetic_scheme_image_path))
-            sub_ax = ax.inset_axes([0.55, 0., 0.44, 0.44])
-            sub_ax.imshow(img)
-            sub_ax.axis('off')
-
-        if title:
-            ax.set_title(title)
-
-        return ax
 
     def average_velocity(self) -> float:
         """Return the average velocity of the translocation model.
@@ -582,30 +521,6 @@ class SC2R(TranslocationModel):
             ('TTD', 'DTT', {'rate': lambda: self.k_down, 'position': -2}),
             ('TTD', 'TTT', {'rate': lambda: self.k_DT}),
             ('TTT', 'TTD', {'rate': lambda: self.k_TD})
-        ])
-        return kinetic_scheme
-
-# TODO to delete?
-
-
-class SC2R2Loops(SC2R):
-    """Sequential Clockwise/2-Residue Step, 2-Loops translocation model."""
-
-    def __init__(self, atp_adp_ratio: float = 10) -> None:
-        super().__init__(atp_adp_ratio)
-
-    def _construct_kinetic_scheme(self, kinetic_scheme: DiGraph | None = None
-                                  ) -> DiGraph:
-        if not kinetic_scheme:
-            kinetic_scheme = DiGraph()
-        kinetic_scheme = super()._construct_kinetic_scheme(kinetic_scheme)
-        kinetic_scheme.add_node(
-            'DTD', probability=lambda: self._compute_probabilities()['DTD'])
-        kinetic_scheme.add_edges_from([
-            ('DTT', 'DTD', {'rate': lambda: self.k_TD}),
-            ('DTD', 'DTT', {'rate': lambda: self.k_DT}),
-            ('DTD', 'TTD', {'rate': lambda: self.k_s, 'ATP': 1}),
-            ('TTD', 'DTD', {'rate': lambda: self.k_h, 'ATP': -1})
         ])
         return kinetic_scheme
 
@@ -953,12 +868,6 @@ class DefectiveRPCL(RPCL):
         """ATP hydrolysis rate of the defective protomer."""
         return self.defect_factor * self.k_h
 
-    # TODO delete to stay consistent with the report
-    @property
-    def k_s_defect(self) -> float:
-        """ATP synthesis rate of the defective protomer."""
-        return self.defect_factor * self.k_s
-
     @property
     def k_h_bar(self) -> float:
         """Effective ATP hydrolysis rate for defect-free loop.
@@ -1021,7 +930,7 @@ class DefectiveRPCL(RPCL):
                 'rate': lambda: self.k_h_defect,
                 'ATP': -1}),
             ('contracted-ADP-defect', 'contracted-ATP', {  # Defective synthesis
-                'rate': lambda: self.k_s_defect,
+                'rate': lambda: self.k_s,
                 'ATP': 1}),
             ('contracted-ADP-defect', 'extended-ADP-defect', {
                 'rate': lambda: self.k_up_extend,
