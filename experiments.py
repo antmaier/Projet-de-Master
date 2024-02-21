@@ -1,6 +1,6 @@
 from translocation_models import TranslocationModel, \
     SC2R, DefectiveSC2R, NonIdealSC2R, \
-    DiscSpiral, DefectiveDiscSpiral, NonIdealDiscSpiral
+    RPCL, DefectiveRPCL, NonIdealRPCL
 
 from ipywidgets import \
     FloatLogSlider, FloatRangeSlider, IntSlider, IntRangeSlider, Dropdown, \
@@ -52,11 +52,11 @@ class Experiment(ABC):
 
     def __init__(self, savefig: bool = False):
         self.savefig = savefig
-        self._free_parameters = self._construct_free_parameters()
-        self._constrained_parameters = self._construct_constrained_parameters()
+        self.free_parameters = self._construct_free_parameters()
+        self.constrained_parameters = self._construct_constrained_parameters()
         self._gui = self._construct_gui()
 
-        for _, widget in self._free_parameters.items():
+        for _, widget in self.free_parameters.items():
             widget.observe(lambda _: self._run(), names='value')
         self._run()
         display(self._gui)
@@ -119,8 +119,8 @@ class Experiment(ABC):
 # and do the same for potential experiment
 
 
-class SC2RVsDiscSpiral(Experiment):
-    """SC/2R vs Disc-Spiral comparison.
+class SC2RVsRPCL(Experiment):
+    """SC/2R vs RPCL comparison.
 
     Plot trajectories, average position and std (analytical and/or emprirical)
     for both models.
@@ -128,7 +128,7 @@ class SC2RVsDiscSpiral(Experiment):
 
     def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
-        self._disc_spiral = DiscSpiral()
+        self._disc_spiral = RPCL()
         super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
@@ -172,52 +172,52 @@ class SC2RVsDiscSpiral(Experiment):
             HBox([
                 VBox([
                     HTML(value="<b>Simulation Parameter</b>"),
-                    HBox([self._free_parameters['max_time'],
+                    HBox([self.free_parameters['max_time'],
                           HTML(value="Maximum simulation time")]),
-                    HBox([self._free_parameters['n_trajectories'],
+                    HBox([self.free_parameters['n_trajectories'],
                           HTML(value="Number of trajectory samples")]),
 
                     HTML(value="<b>General Physical Parameters</b>"),
-                    HBox([self._free_parameters['atp_adp_ratio'],
+                    HBox([self.free_parameters['atp_adp_ratio'],
                           HTML(value="ATP/ADP concentration ratio")]),
-                    HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                    HBox([self.free_parameters['equilibrium_atp_adp_ratio'],
                           HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-                    HBox([self._free_parameters['K_d_atp'],
+                    HBox([self.free_parameters['K_d_atp'],
                           HTML(value="Protomer-ATP dissociation constant")]),
-                    HBox([self._free_parameters['K_d_adp'],
+                    HBox([self.free_parameters['K_d_adp'],
                           HTML(value="Protomer-ADP dissociation constant")]),
-                    HBox([self._free_parameters['k_DT'],
+                    HBox([self.free_parameters['k_DT'],
                           HTML(value="Effective ADP->ATP exchange rate")]),
-                    HBox([self._constrained_parameters['k_TD'],
+                    HBox([self.constrained_parameters['k_TD'],
                           HTML(value="Effective ATP->ADP exchange rate "
                                "(constrained by Protomer-ATP/ADP exchange model)")]),
-                    HBox([self._free_parameters['k_h'],
+                    HBox([self.free_parameters['k_h'],
                           HTML(value="ATP Hydrolysis rate")]),
-                    HBox([self._free_parameters['k_s'],
+                    HBox([self.free_parameters['k_s'],
                           HTML(value="ATP Synthesis rate")]),
                 ]),
                 VBox([
                     HTML(value="<b>SC2R Model Physical Parameters</b>"),
-                    HBox([self._free_parameters['k_up'],
+                    HBox([self.free_parameters['k_up'],
                           HTML(value="Translocation up rate")]),
-                    HBox([self._constrained_parameters['k_down'],
+                    HBox([self.constrained_parameters['k_down'],
                           HTML(value="Translocation down rate "
                                "(constrained by detailed balance)")]),
 
                     HTML(value="<b>RPCL Model Physical Parameters</b>"),
-                    HBox([self._free_parameters['n_protomers'],
+                    HBox([self.free_parameters['n_protomers'],
                           HTML(value="Number of protomers")]),
-                    HBox([self._constrained_parameters['k_h_bar'],
+                    HBox([self.constrained_parameters['k_h_bar'],
                           HTML(value="Effective ATP hydrolysis rate")]),
-                    HBox([self._free_parameters['k_extended_to_flat_up'],
+                    HBox([self.free_parameters['k_extended_to_flat_up'],
                           HTML(value="Upward contraction rate")]),
-                    HBox([self._free_parameters['k_flat_to_extended_down'],
+                    HBox([self.free_parameters['k_flat_to_extended_down'],
                           HTML(value="Downward extension rate")]),
-                    HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                    HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
                           HTML(value="Effective downward extension rate")]),
-                    HBox([self._free_parameters['k_flat_to_extended_up'],
+                    HBox([self.free_parameters['k_flat_to_extended_up'],
                           HTML(value="Upward extension rate")]),
-                    HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                    HBox([self.constrained_parameters['k_extended_to_flat_down'],
                           HTML(value="Downward contraction rate "
                                "(constrained by thermodynamic loop law)")]),
                 ]),
@@ -233,9 +233,9 @@ class SC2RVsDiscSpiral(Experiment):
     def _run(self) -> None:
         # Update GUI<->Models
         models = [self._sc2r, self._disc_spiral]
-        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_models_free_parameters(models, self.free_parameters)
         self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
+                                                self.constrained_parameters)
 
         # Normalize average velocity
         for model in models:
@@ -248,8 +248,8 @@ class SC2RVsDiscSpiral(Experiment):
         plot_trajectories = True
         plot_analytical_stats = True
         plot_empirical_stats = True
-        times = np.linspace(0, self._free_parameters['max_time'].value, 100)
-        n_trajectories = self._free_parameters['n_trajectories'].value
+        times = np.linspace(0, self.free_parameters['max_time'].value, 100)
+        n_trajectories = self.free_parameters['n_trajectories'].value
 
         if plot_trajectories:
             trajectories = {model: None for model in models}
@@ -534,7 +534,7 @@ class VelocityVsATPADPRatio(Experiment):
 
     def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
-        self._disc_spiral = DiscSpiral()
+        self._disc_spiral = RPCL()
         super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
@@ -575,46 +575,46 @@ class VelocityVsATPADPRatio(Experiment):
             HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
 
             HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['ratio_magnitude_range'],
+            HBox([self.free_parameters['ratio_magnitude_range'],
                   HTML(value="(ATP/ADP)/([ATP]/[ADP])|eq. orders of magnitude")]),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+            HBox([self.free_parameters['equilibrium_atp_adp_ratio'],
                   HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['K_d_atp'],
+            HBox([self.free_parameters['K_d_atp'],
                   HTML(value="Protomer-ATP dissociation constant")]),
-            HBox([self._free_parameters['K_d_adp'],
+            HBox([self.free_parameters['K_d_adp'],
                   HTML(value="Protomer-ADP dissociation constant")]),
-            HBox([self._free_parameters['k_DT'],
+            HBox([self.free_parameters['k_DT'],
                   HTML(value="Effective ADP->ATP exchange rate")]),
-            HBox([self._constrained_parameters['k_TD'],
+            HBox([self.constrained_parameters['k_TD'],
                   HTML(value="Effective ATP->ADP exchange rate "
                        "(constrained by Protomer-ATP/ADP exchange model, "
                        "for current [ATP]/[ADP] range)")]),
-            HBox([self._free_parameters['k_h'],
+            HBox([self.free_parameters['k_h'],
                   HTML(value="ATP Hydrolysis rate")]),
-            HBox([self._free_parameters['k_s'],
+            HBox([self.free_parameters['k_s'],
                   HTML(value="ATP Synthesis rate")]),
 
             HTML(value="<b>SC/2R Model Physical Parameters</b>"),
-            HBox([self._free_parameters['k_up'],
+            HBox([self.free_parameters['k_up'],
                   HTML(value="Translocation up rate")]),
-            HBox([self._constrained_parameters['k_down'],
+            HBox([self.constrained_parameters['k_down'],
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
             HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self._free_parameters['n_protomers'],
+            HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
-            HBox([self._constrained_parameters['k_h_bar'],
+            HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self._free_parameters['k_extended_to_flat_up'],
+            HBox([self.free_parameters['k_extended_to_flat_up'],
                   HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_down'],
+            HBox([self.free_parameters['k_flat_to_extended_down'],
                   HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
                   HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_up'],
+            HBox([self.free_parameters['k_flat_to_extended_up'],
                   HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self._constrained_parameters['k_extended_to_flat_down'],
+            HBox([self.constrained_parameters['k_extended_to_flat_down'],
                   HTML(value="Spiral->disc down rate "
                        "(constrained by detailed balance)")]),
         ])
@@ -626,9 +626,9 @@ class VelocityVsATPADPRatio(Experiment):
 
     def _run(self) -> None:
         models = [self._sc2r, self._disc_spiral]
-        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_models_free_parameters(models, self.free_parameters)
         self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
+                                                self.constrained_parameters)
         # Update k_TD for current range of ATP/ADP ratios
         def k_TD_range(k_DT, K_d_atp, K_d_adp, atp_adp_ratio_min,
                        atp_adp_ratio_max):
@@ -636,20 +636,20 @@ class VelocityVsATPADPRatio(Experiment):
             k_TD_min = k_DT * K_d_atp / K_d_adp / atp_adp_ratio_max
             k_TD_max = k_DT * K_d_atp / K_d_adp / atp_adp_ratio_min
             return str(round(k_TD_max, 2)) + "●――●" + str(round(k_TD_min, 2))
-        self._constrained_parameters['k_TD'].value = k_TD_range(
-            self._free_parameters['k_DT'].value,
-            self._free_parameters['K_d_atp'].value,
-            self._free_parameters['K_d_adp'].value,
-            (10**self._free_parameters['ratio_magnitude_range'].value[0]
-             * self._free_parameters['equilibrium_atp_adp_ratio'].value),
-            (10**self._free_parameters['ratio_magnitude_range'].value[1]
-             * self._free_parameters['equilibrium_atp_adp_ratio'].value),
+        self.constrained_parameters['k_TD'].value = k_TD_range(
+            self.free_parameters['k_DT'].value,
+            self.free_parameters['K_d_atp'].value,
+            self.free_parameters['K_d_adp'].value,
+            (10**self.free_parameters['ratio_magnitude_range'].value[0]
+             * self.free_parameters['equilibrium_atp_adp_ratio'].value),
+            (10**self.free_parameters['ratio_magnitude_range'].value[1]
+             * self.free_parameters['equilibrium_atp_adp_ratio'].value),
         )
 
         # Velocity for all (ATP/ADP)/(ATP/ADP)|eq. values in range
-        min, max = self._free_parameters['ratio_magnitude_range'].value
+        min, max = self.free_parameters['ratio_magnitude_range'].value
         atp_adp_ratios = (np.logspace(min, max, 100)
-                          * self._free_parameters['equilibrium_atp_adp_ratio'].value)
+                          * self.free_parameters['equilibrium_atp_adp_ratio'].value)
         velocities = {model: [] for model in models}
         for atp_adp_ratio in atp_adp_ratios:
             for model in models:
@@ -716,7 +716,7 @@ class VelocityVsPotential(Experiment):
     # https://fr.wikipedia.org/wiki/Loi_d%27Arrhenius
     def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
-        self._disc_spiral = DiscSpiral()
+        self._disc_spiral = RPCL()
         # Copy used for accessing rates before applying the Boltzmann factor due to potential
         self._sc2r_copy = copy.deepcopy(self._sc2r)
         self._disc_spiral_copy = copy.deepcopy(self._disc_spiral)
@@ -764,49 +764,49 @@ class VelocityVsPotential(Experiment):
         gui_parameters = VBox([
             HTML(value="<h1>Velocity vs Potential</h1>"),
 
-            HBox([self._free_parameters['unit_potential'],
+            HBox([self.free_parameters['unit_potential'],
                   HTML(value="Potential (for a unit displacement) over temperature")]),
 
             HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['atp_adp_ratio'],
+            HBox([self.free_parameters['atp_adp_ratio'],
                   HTML(value="ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+            HBox([self.free_parameters['equilibrium_atp_adp_ratio'],
                   HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['K_d_atp'],
+            HBox([self.free_parameters['K_d_atp'],
                   HTML(value="Protomer-ATP dissociation constant")]),
-            HBox([self._free_parameters['K_d_adp'],
+            HBox([self.free_parameters['K_d_adp'],
                   HTML(value="Protomer-ADP dissociation constant")]),
-            HBox([self._free_parameters['k_DT'],
+            HBox([self.free_parameters['k_DT'],
                   HTML(value="Effective ADP->ATP exchange rate")]),
-            HBox([self._constrained_parameters['k_TD'],
+            HBox([self.constrained_parameters['k_TD'],
                   HTML(value="Effective ATP->ADP exchange rate "
                        "(constrained by Protomer-ATP/ADP exchange model)")]),
-            HBox([self._free_parameters['k_h'],
+            HBox([self.free_parameters['k_h'],
                   HTML(value="ATP Hydrolysis rate")]),
-            HBox([self._free_parameters['k_s'],
+            HBox([self.free_parameters['k_s'],
                   HTML(value="ATP Synthesis rate")]),
 
             HTML(value="<b>SC2R Model Physical Parameters</b>"),
-            HBox([self._free_parameters['k_up'],
+            HBox([self.free_parameters['k_up'],
                   HTML(value="Translocation up rate")]),
-            HBox([self._constrained_parameters['k_down'],
+            HBox([self.constrained_parameters['k_down'],
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
             HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self._free_parameters['n_protomers'],
+            HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
-            HBox([self._constrained_parameters['k_h_bar'],
+            HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self._free_parameters['k_extended_to_flat_up'],
+            HBox([self.free_parameters['k_extended_to_flat_up'],
                   HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_down'],
+            HBox([self.free_parameters['k_flat_to_extended_down'],
                   HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
                   HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_up'],
+            HBox([self.free_parameters['k_flat_to_extended_up'],
                   HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self._constrained_parameters['k_extended_to_flat_down'],
+            HBox([self.constrained_parameters['k_extended_to_flat_down'],
                   HTML(value="Spiral->disc down rate "
                        "(constrained by detailed balance)")]),
         ])
@@ -819,13 +819,13 @@ class VelocityVsPotential(Experiment):
     def _run(self) -> None:
         models = [self._sc2r, self._disc_spiral]
         # Update models<->GUI
-        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_models_free_parameters(models, self.free_parameters)
         self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
+                                                self.constrained_parameters)
 
         # Add potentials in range
         models_copy = [self._sc2r_copy, self._disc_spiral_copy]
-        min, max = self._free_parameters['unit_potential'].value
+        min, max = self.free_parameters['unit_potential'].value
         unit_potentials = np.linspace(min, max, 100)
         velocities = {model: [] for model in models}
         for model, model_copy in zip(models, models_copy):
@@ -926,8 +926,8 @@ class DefectlessVsDefective(Experiment):
     def __init__(self, savefig: bool = False):
         self._sc2r = SC2R()
         self._defective_sc2r = DefectiveSC2R()
-        self._disc_spiral = DiscSpiral()
-        self._defective_disc_spiral = DefectiveDiscSpiral()
+        self._disc_spiral = RPCL()
+        self._defective_disc_spiral = DefectiveRPCL()
         super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
@@ -975,56 +975,56 @@ class DefectlessVsDefective(Experiment):
                 HTML(
                     value="<h1>SC/2R and Disc-Spiral ATP consumption rate comparison</h1>"),
 
-                HBox([self._free_parameters['defect_factor'],
+                HBox([self.free_parameters['defect_factor'],
                       HTML(value="Hydrolysis defect factor")]),
-                HBox([self._free_parameters['n_protomers'],
+                HBox([self.free_parameters['n_protomers'],
                       HTML(value="Number of protomers")]),
 
                 HTML(value="<b>Simulation Parameter</b>"),
-                HBox([self._free_parameters['max_time'],
+                HBox([self.free_parameters['max_time'],
                       HTML(value="Maximum simulation time")]),
-                HBox([self._free_parameters['n_trajectories'],
+                HBox([self.free_parameters['n_trajectories'],
                       HTML(value="Number of trajectory samples")]),
 
                 HTML(value="<b>General Physical Parameters</b>"),
-                HBox([self._free_parameters['atp_adp_ratio'],
+                HBox([self.free_parameters['atp_adp_ratio'],
                       HTML(value="ATP/ADP concentration ratio")]),
-                HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+                HBox([self.free_parameters['equilibrium_atp_adp_ratio'],
                       HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-                HBox([self._free_parameters['K_d_atp'],
+                HBox([self.free_parameters['K_d_atp'],
                       HTML(value="Protomer-ATP dissociation constant")]),
-                HBox([self._free_parameters['K_d_adp'],
+                HBox([self.free_parameters['K_d_adp'],
                       HTML(value="Protomer-ADP dissociation constant")]),
-                HBox([self._free_parameters['k_DT'],
+                HBox([self.free_parameters['k_DT'],
                       HTML(value="Effective ADP->ATP exchange rate")]),
-                HBox([self._constrained_parameters['k_TD'],
+                HBox([self.constrained_parameters['k_TD'],
                       HTML(value="Effective ATP->ADP exchange rate "
                            "(constrained by Protomer-ATP/ADP exchange model)")]),
-                HBox([self._free_parameters['k_h'],
+                HBox([self.free_parameters['k_h'],
                       HTML(value="ATP Hydrolysis rate")]),
-                HBox([self._free_parameters['k_s'],
+                HBox([self.free_parameters['k_s'],
                       HTML(value="ATP Synthesis rate")]),
             ]),
             VBox([
                 HTML(value="<b>SC2R Model Physical Parameters</b>"),
-                HBox([self._free_parameters['k_up'],
+                HBox([self.free_parameters['k_up'],
                       HTML(value="Translocation up rate")]),
-                HBox([self._constrained_parameters['k_down'],
+                HBox([self.constrained_parameters['k_down'],
                       HTML(value="Translocation down rate "
                            "(constrained by detailed balance)")]),
 
                 HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-                HBox([self._constrained_parameters['k_h_bar'],
+                HBox([self.constrained_parameters['k_h_bar'],
                       HTML(value="Effective ATP hydrolysis rate")]),
-                HBox([self._free_parameters['k_extended_to_flat_up'],
+                HBox([self.free_parameters['k_extended_to_flat_up'],
                       HTML(value="Spiral->disc up translocation rate")]),
-                HBox([self._free_parameters['k_flat_to_extended_down'],
+                HBox([self.free_parameters['k_flat_to_extended_down'],
                       HTML(value="Disc->spiral down translocation rate")]),
-                HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+                HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
                       HTML(value="Effective disc->spiral down translocation rate")]),
-                HBox([self._free_parameters['k_flat_to_extended_up'],
+                HBox([self.free_parameters['k_flat_to_extended_up'],
                       HTML(value="Disc->spiral up translocation rate")]),
-                HBox([self._constrained_parameters['k_extended_to_flat_down'],
+                HBox([self.constrained_parameters['k_extended_to_flat_down'],
                       HTML(value="Spiral->disc down rate "
                            "(constrained by detailed balance)")]),
             ])
@@ -1039,17 +1039,17 @@ class DefectlessVsDefective(Experiment):
         # Update GUI<->Models
         models = [self._sc2r, self._defective_sc2r,
                   self._disc_spiral, self._defective_disc_spiral]
-        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_models_free_parameters(models, self.free_parameters)
         self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
+                                                self.constrained_parameters)
 
         # For each model, we do a few trajectories, compute analytical stats and
         # empirical stats, and then plot everything.
         plot_trajectories = True
         plot_analytical_stats = True
         plot_empirical_stats = True
-        times = np.linspace(0, self._free_parameters['max_time'].value, 100)
-        n_trajectories = self._free_parameters['n_trajectories'].value
+        times = np.linspace(0, self.free_parameters['max_time'].value, 100)
+        n_trajectories = self.free_parameters['n_trajectories'].value
 
         if plot_trajectories:
             trajectories = {model: None for model in models}
@@ -1377,7 +1377,7 @@ class DefectlessVsDefective(Experiment):
 class NonIdeal(Experiment):
     def __init__(self, savefig: bool = False):
         self._non_ideal_sc2r = NonIdealSC2R()
-        self._non_ideal_disc_spiral = NonIdealDiscSpiral()
+        self._non_ideal_disc_spiral = NonIdealRPCL()
         super().__init__(savefig=savefig)
 
     def _construct_free_parameters(self) -> dict[str, Widget]:
@@ -1433,55 +1433,55 @@ class NonIdeal(Experiment):
         gui_parameters = VBox([
             HTML(value="<h1>Non-Ideal Models</h1>"),
 
-            HBox([self._free_parameters['k_out_range'],
+            HBox([self.free_parameters['k_out_range'],
                   HTML(value="Order of out-of-main-loop rate")]),
-            HBox([self._free_parameters['k_in'],
+            HBox([self.free_parameters['k_in'],
                   HTML(value="Back-in-main-loop rate")]),
 
             HTML(value="<b>General Physical Parameters</b>"),
-            HBox([self._free_parameters['atp_adp_ratio'],
+            HBox([self.free_parameters['atp_adp_ratio'],
                   HTML(value="ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['equilibrium_atp_adp_ratio'],
+            HBox([self.free_parameters['equilibrium_atp_adp_ratio'],
                   HTML(value="Equilibrium ATP/ADP concentration ratio")]),
-            HBox([self._free_parameters['K_d_atp'],
+            HBox([self.free_parameters['K_d_atp'],
                   HTML(value="Protomer-ATP dissociation constant")]),
-            HBox([self._free_parameters['K_d_adp'],
+            HBox([self.free_parameters['K_d_adp'],
                   HTML(value="Protomer-ADP dissociation constant")]),
-            HBox([self._free_parameters['k_DT'],
+            HBox([self.free_parameters['k_DT'],
                   HTML(value="Effective ADP->ATP exchange rate")]),
-            HBox([self._constrained_parameters['k_TD'],
+            HBox([self.constrained_parameters['k_TD'],
                   HTML(value="Effective ATP->ADP exchange rate "
                        "(constrained by Protomer-ATP/ADP exchange model)")]),
-            HBox([self._free_parameters['k_h'],
+            HBox([self.free_parameters['k_h'],
                   HTML(value="ATP Hydrolysis rate")]),
-            HBox([self._free_parameters['k_s'],
+            HBox([self.free_parameters['k_s'],
                   HTML(value="ATP Synthesis rate")]),
 
             HTML(value="<b>SC/2R Model Physical Parameters</b>"),
-            HBox([self._free_parameters['sc2r_reference_state'],
+            HBox([self.free_parameters['sc2r_reference_state'],
                   HTML(value="SC/2R out-of-main-loop reference state")]),
-            HBox([self._free_parameters['k_up'],
+            HBox([self.free_parameters['k_up'],
                   HTML(value="Translocation up rate")]),
-            HBox([self._constrained_parameters['k_down'],
+            HBox([self.constrained_parameters['k_down'],
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
             HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self._free_parameters['disc_spiral_reference_state'],
+            HBox([self.free_parameters['disc_spiral_reference_state'],
                   HTML(value="Disc-Spiral out-of-main-loop reference state")]),
-            HBox([self._free_parameters['n_protomers'],
+            HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
-            HBox([self._constrained_parameters['k_h_bar'],
+            HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self._free_parameters['k_extended_to_flat_up'],
+            HBox([self.free_parameters['k_extended_to_flat_up'],
                   HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_down'],
+            HBox([self.free_parameters['k_flat_to_extended_down'],
                   HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self._constrained_parameters['k_flat_to_extended_down_bar'],
+            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
                   HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self._free_parameters['k_flat_to_extended_up'],
+            HBox([self.free_parameters['k_flat_to_extended_up'],
                   HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self._constrained_parameters['k_extended_to_flat_down'],
+            HBox([self.constrained_parameters['k_extended_to_flat_down'],
                   HTML(value="Spiral->disc down rate "
                        "(constrained by detailed balance)")]),
         ])
@@ -1494,16 +1494,16 @@ class NonIdeal(Experiment):
     def _run(self) -> None:
         models = [self._non_ideal_sc2r, self._non_ideal_disc_spiral]
         # Update models<->GUI
-        self._update_models_free_parameters(models, self._free_parameters)
+        self._update_models_free_parameters(models, self.free_parameters)
         self._update_gui_constrained_parameters(models,
-                                                self._constrained_parameters)
+                                                self.constrained_parameters)
         self._non_ideal_sc2r.reference_state = \
-            self._free_parameters['sc2r_reference_state'].value
+            self.free_parameters['sc2r_reference_state'].value
         self._non_ideal_disc_spiral.reference_state = \
-            self._free_parameters['disc_spiral_reference_state'].value
+            self.free_parameters['disc_spiral_reference_state'].value
 
         # Probability of being in the out state vs k_out range
-        min, max = self._free_parameters['k_out_range'].value
+        min, max = self.free_parameters['k_out_range'].value
         k_outs = np.logspace(min, max, 100)
         probabilities = {model: [] for model in models}
         for model in models:
