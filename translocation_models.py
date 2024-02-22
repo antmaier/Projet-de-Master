@@ -91,8 +91,17 @@ class TranslocationModel(ABC):
         # Protomer-ATP/ADP dissociation constants
         self.K_d_atp = 1
         self.K_d_adp = 1
-        # Effective ADP->ATP exchange rate
+        # Effective ADP->ATP exchange rate (! not at equilibrium, has to be set 
+        # to constrain all the degree of freedom of the ATP/ADP exchange model)
         self.k_DT = 1
+        # One could instead define k_[on/off]_[atp/adp], the binding/unbinding
+        # rates of ATP/ADP to/from the protomer, remove K_d_atp and K_d_adp
+        # and then k_DT and k_TD would be determined by these rates and the 
+        # ATP/ADP ratio at- and off-equilibrium. The way it is implemented now
+        # has the advantage of having a free parameter less, but has the 
+        # disadvantage of being less physically intuitive, since modifying the
+        # ATP/ADP ratio does not directly modify k_DT.
+
         # ATP hydrolysis/synthesis rates
         self.k_h = 1
         self.k_s = 1
