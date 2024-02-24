@@ -1,0 +1,222 @@
+To model a translocation mechanism by a kinetic scheme, we first consider the simplest case, an idealized version involving a minimal number of states and transitions in order to capture the essence of the model, and as a second step we add more complexity to take into account more realistic features.
+
+\subsection{ATP/ADP-Protomer exchange model}
+\label{subsec:atp-adp-exchange-model}
+    Before detailing the translocation models, we explain the source of energy that drives the translocation since, aside from thermal agitation, at equilibrium the AAA+ ATPase on average stands still. In the cell, the [ATP]/[ADP] concentration ratio is maintained at $\sim20-1000$, which is considerably greater than its equilibrium value $\sim10^{-5}$\cite{meyrat_atp_2019}. The ATPases in the cell are in contact with a high concentration of ATP, and thus, as we will see, this favors an ADP-bounded protomer to exchange its nucleotide for an ATP from its environment.
+
+    Consider a volume containing proteins, with ATP and ADP floating around. These nucleotides can bound and unbound from the proteins with rates $k_{on}^T$, $k_{off}^T$ and $k_{on}^D$, $k_{off}^D$, where the superscripts $T$ and $D$ stand for ATP and ADP and the subscripts $on$ and $off$ stand for the binding and unbinding reactions, respectively. Writing $\text{P}\equiv\text{Protein}$, $\text{T}\equiv\text{ATP}$ and $\text{D}\equiv\text{ADP}$, the chemical equation of this process is:
+    \begin{equation}
+        \ce{PT + D <=>[k_{off}^T][k_{on}^T] P + T + D <=>[k_{on}^D][k_{off}^D] PD + T}
+    \end{equation}
+    Using a simple bimolecular binding/unbinding model for the protein-nucleotide interactions, the corresponding master equations for the concentrations $[.]$ are:
+    \begin{equation}
+    \begin{split}
+        \frac{d[\text{PT}]}{dt} &= k_{on}^T [\text{P}][\text{T}] - k_{off}^T [\text{PT}] \\
+        \frac{d[\text{PD}]}{dt} &= k_{on}^D [\text{P}][\text{D}] - k_{off}^D [\text{PD}] \\
+        \frac{d[\text{P}]}{dt} &= k_{off}^T [\text{PT}] + k_{off}^D [\text{PD}] - (k_{on}^T + k_{on}^D) [\text{P}]
+    \end{split}
+    \end{equation}
+    We omitted the equations for ATP and ADP concentration evolution because they are redundant in steady-state, which is the state we are ultimately interested in. 
+    
+    We assume that the sojourn time of the protein not bound to any nucleotide is much shorter than the binding/unbinding times so that we can set $\dot{[\text{P}]}=0$ and thus $[\text{P}]=\frac{k_{off}^T [\text{PT}] + k_{off}^D [\text{PD}]}{k_{on}^T + k_{on}^D}$. Plugging this expression into the bounded complexes equations above and developing the result, we obtain:
+    \begin{equation}
+        \frac{d[\text{PT}]}{dt} = 
+            \underbrace{\frac{k_{off}^D k_{on}^T [\text{T}]}{k_{on}^T [\text{T}] + k_{on}^D [\text{D}]}}_{=:k_{DT}} [\text{PD}]
+            - \underbrace{\frac{k_{off}^T k_{on}^D [\text{D}]}{k_{on}^T [\text{T}] + k_{on}^D [\text{D}]}}_{=:k_{TD}} [\text{PT}]
+    \end{equation}
+    and a similar equation for $[\text{PD}]$ but with opposite signs, where we defined effective exchange rates $k_{DT}$ and $k_{TD}$ for $\text{ADP}\to\text{ATP}$ and $\text{ATP}\to\text{ADP}$ exchange, respectively. This means that under the assumption that the protein spends most of its time bound to a nucleotide, we can rewrite the ATP/ADP exchange as a single reaction:
+    \begin{equation}
+        \ce{PT <=>[k_{TD}][k_{DT}] PD}
+    \end{equation}
+    
+    One important thing here is that these effective exchange rates depend on the [ATP]/[ADP] concentration ratio, and thus, a direction is favored when it deviates from its equilibrium value. In particular, looking at the ratio of rates
+    \begin{equation}
+    \label{eq:kdt-ktd-ratio}
+        \frac{k_{DT}}{k_{TD}} 
+        = \frac{k_{off}^D k_{on}^T}{k_{off}^T k_{on}^D} \frac{[T]}{[D]}
+        = \frac{K_d^D}{K_d^T} \frac{[T]}{[D]}
+    \end{equation}
+    where $K_d^N:=\frac{k_{off}^N}{k_{on}^N}$ is the dissociation constant of the nucleotide $N$, we see that when [ATP]/[ADP] is extraordinarily higher than its equilibrium value, as it is the case in cells, a protein in ADP-bound state is strongly favored to exchange its nucleotide for an ATP from its environment. This is the source that drives the translocation models.
+    
+    A last important relation is the following. Consider the ratio of the effective exchange rates at equilibrium:
+    \begin{multline}
+    \label{eq:equil-kdt-ktd-ratio}
+        \left.\frac{k_{DT}}{k_{TD}}\right|_{eq.}
+        = \frac{K_d^D}{K_d^T} \left.\frac{[T]}{[D]}\right|_{eq.}
+        = \frac{K_d^D}{K_d^T} \frac{[T]}{[D]} \frac{[D]}{[T]} \left.\frac{[T]}{[D]}\right|_{eq.} \\
+        = \frac{k_{DT}}{k_{TD}} \left(\left.\frac{[T]}{[D]}\right|_{eq.} \middle/ \frac{[T]}{[D]}\right)
+    \end{multline}
+    This is particularly useful for a thermodynamic loop law Eq~\eqref{eq:thermo-loop-law} involving nucleotide exchange to make [ATP]/[ADP] appear explicitly.
+
+\subsection{Common features of the translocation models}
+    Before defining the translocation models themselves, we first detail the common features of these models. The AAA+ ATPase is made of $N$ protomers, $N=6$ for Hsp104, but the models we study can be extended to an arbitrary number of protomers. Each protomer is either in ATP-bound state or in ADP-bound state. Nucleotide-bound state can change due to ATP hydrolysis, with rate $k_h$, spontaneous ATP synthesis, with rate $k_s$, or nucleotide exchange with rates $k_{DT}$ and $k_{TD}$ as detailed in Sec.~\ref{subsec:atp-adp-exchange-model}.
+
+    The substrate translocation mechanism of the ATPase is due to the individual translocation of protomers in a cyclic manner. There are two quantities of interest: the substrate translocated length and the ATP consumption, or similarly, the translocation velocity and ATP consumption rate. The two quantities are measured during simulations and compared to their analytical expected value computed using Eq~\eqref{eq:quantity-rate-of-change}. In both models, the ATPase consumes one ATP molecule and translocates the substrate by $\Delta x$ residues per cycle, where $\Delta x$ depends on the model. In their kinetic scheme, only one transition consumes ATP and only one transition induces a substrate translocation.
+
+    Finally, with the exception of [ATP]/[ADP] for which its equilibrium and in vivo value are known\cite{meyrat_atp_2019}, in the absence of measurements, all the other physical parameters are freely set to a value with order of magnitude $\sim10^{-1}-10^1$.
+
+\subsection{Sequential Clockwise/2-Residue Step (SC/2R) model}
+\label{subsec:sc2r-model}
+    The exact mechanism of action of substrate translocation of the AAA+ ATPases is far from understood. Shorter J. et al. proposed a hand-over-hand model based on Hsp104 cryoelectron microscopy imaging\cite{shorter_spiraling_2019}. Orienting the Hsp104 such that the amyloid is in the upward direction, its $N=6$ protomers are in a staircase-like configuration. The lowest protomer hydrolyzes its ATP molecule, then translocates upward, parallel to the substrate strand, then stops forming a new stair tread two residues higher than its, previously topmost, left neighbor, and then it exchanges its ADP molecule for an ATP from the bulk. The reaction sequence repeats with the right neighboring protomer, previously the second lowest now the lowest, to hydrolyze its ATP, translocate upwards, exchange its ADP for an ATP, and so on. We call this model Sequential Clockwise/2-Residue Step (SC/2R). Its dynamics are illustrated in a video accessible at \url{https://youtu.be/pqPL35mMfj0}; note that the animator\footnote{Rohaan Waqas (@rohaanwaqas05 on Fiverr)} exercised some creative freedom in its depiction.
+
+    We identify a cycle consisting of three states:
+    \begin{itemize}
+        \item (A) All protomers are in ATP-bound state;
+        \item (B) The lowest protomer is in ADP-bound state, and the others are in ATP-bound state;
+        \item (C) The highest protomer (previously the lowest) is in ADP-bound state, and the others are in ATP-bound state.
+    \end{itemize}
+    We associate the steady-state probability $p_A, p_B, p_C$ to each state A, B, and C.
+    The transitions between the states are the following:
+    \begin{itemize}
+        \item $A\to B$: the lowest protomer hydrolyses its ATP molecule with rate $k_h$ (reverse reaction is spontaneous ATP synthesis with rate $k_s$), which consumes (respectively produces) an ATP molecule;
+        \item $B\to C$: the lowest protomer (now in ADP-bound state) translocates upward with rate $k_\uparrow$ (reverse reaction is translocating downward with rate $k_\downarrow$), which translocates the substrate by $\Delta x=2$ (respectively $\Delta x=-2$) residues;
+        \item $C\to A$: the highest protomer (previously the lowest) exchanges its ADP molecule with an ATP molecule from the bulk with rate $k_{DT}$ (reverse reaction is ATP $\to$ ADP exchange with rate $k_{TD}$). This exchange process is detailed in Sec.~\ref{subsec:atp-adp-exchange-model}.
+    \end{itemize}
+    The corresponding kinetic scheme is:
+    \vspace*{0.5cm}
+    \begin{center}
+        \schemestart
+            C
+            \arrow(TTD--TTT){<->>[$k_{TD}$][$k_{DT}$]}[180,1.1]
+            A
+            \arrow(@TTT--DTT){<->>[*0 $k_h$][*0 $k_s$]}[-90,1.1] 
+            B
+            \arrow(@DTT--@TTD){<->>[*0 $k_\uparrow$][*0 $k_\downarrow$]}
+        \schemestop
+    \end{center}
+    \vspace*{0.5cm}
+    
+    One could argue that more states are needed since different protomers undergo the hydrolysis-translocation-exchange sequence, but the protomers are a priori indistinguishable, and thus, we merge all states that satisfy the state descriptions above. This assumption is lightly discussed in App.~\ref{app:non-ideal-model}.
+
+    The only non-constant rates are the effective exchange rates $k_{DT}$ and $k_{TD}$, which depend on the [ATP]/[ADP] concentration ratio. Obviously, there is a single fundamental cycle in the kinetic scheme, giving us the thermodynamic loop law (Eq.~\eqref{eq:thermo-loop-law}):
+    \begin{equation}
+    \label{eq:sc2r-thermo-loop-law}
+        \frac{k_h k_\uparrow \left.k_{DT}\right|_{eq.}}{k_s k_\downarrow \left.k_{TD}\right|_{eq.}} = 1
+    \end{equation}
+    We set an arbitrary value for $k_\uparrow$, thus $k_\downarrow$ is constrained by the thermodynamic loop law. 
+    
+    Solving the linear system Eq.~\eqref{eq:steady-state-dist} for this model, we find the steady-state probabilities:
+    \begin{equation}
+    \label{eq:sc2r-steady-state-probabilities}
+    \begin{split}
+        p_A &\propto k_s k_{DT} + k_\downarrow k_s + k_\uparrow k_{DT} \\
+        p_B &\propto k_h k_\downarrow + k_{DT} k_h + k_{TD} k_\downarrow \\
+        p_C &\propto k_\uparrow k_{TD} + k_s k_{TD} + k_h k_\uparrow
+    \end{split}
+    \end{equation}
+    where the proportionality constant is fixed by the normalization condition $p_A+p_B+p_C=1$. We see that for each state, its steady-state probability is the product of the two rates directly leading to the state, plus the sum of the product or rates of all paths of size 2 leading to the state.
+    
+    Finally, using Eq.~\eqref{eq:quantity-rate-of-change}, the average velocity $\left\langle v \right\rangle$ and ATP consumption rate $r_{ATP}$ are:
+    \begin{equation}
+    \begin{split}
+        \left\langle v \right\rangle &= \Delta x p_B k_\uparrow - \Delta x p_C k_\downarrow 
+            \propto \Delta x \left(k_h k_\uparrow k_{DT} - k_s k_\downarrow k_{TD}\right) \\
+        r_{ATP} &= p_A k_h - p_B k_s
+            \propto k_h k_\uparrow k_{DT} - k_s k_\downarrow k_{TD}
+    \end{split}
+    \end{equation}
+    where the proportionality constant is the same as the steady-state probabilities Eq~\eqref{eq:sc2r-steady-state-probabilities}. We see that the average velocity and ATP consumption rate are proportional to each other, which is intuitive since in a single loop, all net probability fluxes must be equal by Kirchhoff's law. Moreover, the flux is the product of the rates in one direction of the loop minus the product of the rates in the other direction of the loop. Using the thermodynamic loop law Eq.~\eqref{eq:sc2r-thermo-loop-law}, as well as Eq.~\eqref{eq:equil-kdt-ktd-ratio}, we can rewrite the average velocity as:
+    \begin{equation}
+    \label{eq:sc2r-average-velocity}
+        \left\langle v \right\rangle \propto \Delta x \left(1 - \left.\frac{[T]}{[D]}\right|_{eq.}\bigg/\frac{[T]}{[D]}\right) k_h k_\uparrow k_{DT}
+    \end{equation}
+    which shows explicitly that the average velocity is directly proportional to the deviation of [ATP]/[ADP] from equilibrium, the product of rates in the main direction of the loop, and the absolute substrate translocation steplength $\Delta x$. This is a general result that holds for any kinetic scheme made of a single fundamental cycle, and it is illustrated numerically in App.~\ref{app:average-velocity-vs-atp-adp-ratio}. 
+    
+    Finally, we compute the net ATP consumed per translocated residue:
+    \begin{equation}
+    \label{eq:sc2r-atp-per-residue}
+        \frac{\#\text{ATP}}{\#\text{residue}} = \frac{r_{ATP}}{\left\langle v \right\rangle} = \frac{1}{\Delta x} = 0.5
+    \end{equation}
+
+\subsection{Random Protomer Concertina Locomotion (RPCL) model}
+\label{subsec:rpcl-model}
+    Some implications from the SC/2R model do not match experimental data; we will detail this more later. This motivated us to propose a new model, the Random Protomer Concertina Locomotion (RPCL) model.
+
+    This alternative model is based on a simple physical assumption: the height difference of two neighboring protomers is subject to a linear restoring force. We further assume that the spring constant depends only on the nucleotide-bound state of the pair of protomers, and in particular, it is weaker between an ADP-bound and an ATP-bound protomer, than between two ATP-bound protomers. Then, the AAA+ ATPase adopts the minimum energy configuration, which we derive depending on the nucleotide-bound state of its $N$ protomers.
+
+    Let $h_i$ be the height difference between protomer $i+1$ and $i$ and $h_0$ their equilibrium height difference (we choose arbitrarily that protomer $i+1$ is the right neighbor of protomer $i$). We write $k$, the spring constant between two neighboring ATP-bound protomers, and $k'$, the spring constant between an ADP-bound protomer and its right (ATP-bound) neighbors (this choice is explained later). Then, there are in total $N$ interactions (since the protomers are cyclically arranged), and to each restoring force is associated a potential energy $\frac{1}{2}k h_i^2$. The height differences $h_i$ are signed thus they must always sum to zero. 
+    
+    Let's first find the minimum energy configuration in the case where a single protomer, the $N$-th without loss of generality, is in ADP-bound state, and all the others are in ATP-bound state. The Lagrangian of the system is:
+    \begin{equation}
+        \mathcal{L} = \frac{1}{2}k \sum_{i=1}^{N-1} (h_i - h_0)^2 + \frac{1}{2}k' (h_N - h_0)^2 - \lambda \sum_{i=1}^N h_i
+    \end{equation}
+    where $\lambda$ is the Lagrange multiplier associated with the constraint $\sum_{i=1}^N h_i = 0$. Solving the system of equations $\left\{\frac{\partial\mathcal{L}}{\partial h_i}=0 \quad \forall i, \quad \frac{\partial\mathcal{L}}{\partial \lambda}=0\right\}$, we find the minimal energy configuration:
+    \begin{equation}
+    \begin{cases}
+        h_{i\neq N} = h_0 \frac{k-k'}{(N-1)k'+k}, & \\
+        h_N = (N-1) h_0 \frac{k'-k}{(N-1)k'+k} = -(N-1) h_{i\neq N} &
+    \end{cases}
+    \end{equation}
+    This is the description of a staircase-like configuration, similar to SC/2R model, where each protomer is $\Delta h := h_{i\neq N}$ higher than its left neighbor, except for the ADP-bound protomer where its weaker interaction $k'<k$ induces a large step down. If we set $\Delta h = 2$ residues, this configuration is identical to SC/2R's configuration. 
+    
+    When all protomers are in ATP-bound state, the weaker spring constant becomes $k'\mapsto k$, and it results in a flat minimal energy configuration, where $h_i = 0, \: \forall i$. This configuration predicted by RPCL but absent from SC/2R resembles Hsp104's \emph{closed state} experimentally observed\cite{shorter_spiraling_2019}. 
+    
+    Based on these two configurations, we propose the following dynamics. The ATPase starts in a flat configuration. All the protomers compete independently in parallel to hydrolyze their ATP molecule. The first one to do so prohibits other protomer's hydrolysis and this alters the potential with its right neighbor. Then the ATPase adopts the minimal energy staircase-like configuration, with the right neighbor of the ADP-state protomer fixed to the substrate, by translocating all the other protomers upward, $\Delta h = 2$ residues higher than their left neighbor. With these choices, the protomer that moves the most is the ADP-bound one, somewhat similar to SC/2R, where it was motivated by a cryo-EM measurement, the lower-resolution density being an indicator of conformational flexibility\cite{shorter_spiraling_2019}. Now the ADP-bound protomer exchanges its nucleotide for an ATP from the bulk, which induces the ATPase to contract upward, back to the flat configuration. For this transition, we propose that it's the previously ADP-bound protomer that stays fixed to the substrate and all other protomers that translocate upwards. This cycle repeats, and the substrate is translocated by $\Delta x = (N-1)\Delta h = 10$ residues per cycle. The name \emph{concertina locomotion} takes its inspiration from a type of locomotion that some snakes use to climb trees.\footnote{See \url{https://en.wikipedia.org/wiki/Concertina_movement\#Modes\#Arboreal}} Its dynamics are illustrated in a video accessible at \url{https://youtu.be/95A3J68zQ0Q}; note that the animator\footnote{Rohaan Waqas (@rohaanwaqas05 on Fiverr)} exercised some creative freedom in its depiction.
+    
+    To transpose this model in the kinetic scheme framework, we identify 4 states in the cycle:
+    \begin{itemize}
+        \item (A) All protomers are in ATP-bound state and the ATPase is in a flat configuration;
+        \item (B) A single randomly chosen protomer is in ADP-bound state and the ATPase is in a flat configuration;
+        \item (C) The ATPase is in a staircase-like configuration with the ADP-bound protomer being the highest one;
+        \item (D) All protomers are in ATP-bound state, and the ATPase is in a staircase-like configuration.
+    \end{itemize}
+    We associate to each state A, B, C, D the steady-state probability $p_A, p_B, p_C, p_D$, respectively. 
+    
+    Again merging all the indistinguishable states (assumption lightly discussed in App.~\ref{app:non-ideal-model}), the transitions between the states are the following:
+    \begin{itemize}
+        \item $A\to B$: a random protomer hydrolyses its ATP molecule with rate $k_h$ (reverse reaction is spontaneous ATP synthesis with rate $k_s$), which consumes (respectively produces) an ATP molecule. But since there are $N$ protomers, and each protomer is equally likely to hydrolyze its ATP molecule, in the kinetic scheme this reaction has an effective rate $\bar{k}_h = N k_h$. The reverse reaction is left unchanged;
+        \item $B\to C$: the ATPase extends upward, the right neighbor of ADP-bound protomer being fixed and all other protomers stop $\Delta h = 2$ residues higher than their left neighbor, to adopt the staircase-like configuration with rate $k_{\uparrow ext.}$ (reverse reaction is to contract downward with rate $k_{\downarrow cont.}$), which induces a substrate translocation of $\Delta x=2(N-1)=10$ (respectively $\Delta x=-2(N-1)=-10$) residues;
+        \item $C\to D$: the previously ADP-bound protomer exchanges its ADP molecule with an ATP molecule from the bulk with rate $k_{DT}$ (reverse reaction is ATP $\to$ ADP exchange with rate $k_{TD}$). This exchange process is detailed in Sec.~\ref{subsec:atp-adp-exchange-model};
+        \item $D\to A$: the ATPase contracts upward, the previously ADP-bound protomer being fixed to the substrate, all the other protomers translocate upward, to adopt the flat configuration with rate $k_{\uparrow cont.}$. This is not considered substrate translocation because we choose arbitrarily the height of the topmost protomer to be the reference when measuring substrate translocation. The reverse reaction is to extend downward with rate $k_{\downarrow ext.}$ for a single protomer, but since in the full-ATP-flat configuration this reaction could be induced by any of the $N$ protomers, in the kinetic scheme we associate to this reaction an effective rate $\bar{k}_{\downarrow ext.}=Nk_{\downarrow ext.}$.
+    \end{itemize}
+    The kinetic scheme of this model is
+    \vspace*{0.5cm}
+    \begin{center}
+        \schemestart
+        A
+        \arrow(FlatT--FlatD){<->>[*0 $\bar{k}_h$][*0 $k_s$]}[-90,1.1] 
+        B
+        \arrow(@FlatD--ExtendedD){<->>[$k_{\uparrow ext.}$][$k_{\downarrow cont.}$]}[,1.1]
+        C
+        \arrow(@ExtendedD--ExtendedT){<->>[*0 $k_{DT}$][*0 $k_{TD}$]}[90,1.1]
+        D
+        \arrow(@FlatT--@ExtendedT){<<->[$\bar{k}_{\downarrow ext.}$][$k_{\uparrow cont.}$]}[,1.1]
+    \schemestop
+    \end{center}
+    \vspace*{0.5cm}
+    
+    Similarly to the SC/2R model, only effective exchange rates $k_{DT}$ and $k_{TD}$ are non-constants and depend on the [ATP]/[ADP] concentration ratio. All the protomer translocation rates are freely set, except for $k_{\downarrow cont.}$ which is constrained by the thermodynamic loop law (Eq.~\eqref{eq:thermo-loop-law}):
+    \begin{equation}
+    \label{eq:rpcl-thermo-loop-law}
+        \frac{k_h k_{\uparrow ext.} \left.k_{DT}\right|_{eq.} k_{\uparrow cont.}}{k_s k_{\downarrow cont.} \left.k_{TD}\right|_{eq.} k_{\downarrow ext.}} = 1
+    \end{equation}
+    It is irrelevant to use the bar constants in the thermodynamic loop law or not since they appear in the numerator and the denominator, and thus cancel out.
+    
+    We then solve the linear system Eq.~\eqref{eq:steady-state-dist} for this system to obtain the steady-state probabilities:
+    \begin{equation}
+    \label{eq:rpcl-steady-state-probabilities}
+    \begin{split}
+        p_A &\propto k_s k_{\downarrow cont.} k_{\uparrow cont.} + k_s k_{DT} k_{\uparrow cont.} + k_s k_{\downarrow cont.} k_{TD} + k_{\uparrow ext.} k_{DT} k_{\uparrow cont.} \\
+        p_B &\propto \bar{k}_h k_{\downarrow cont.} k_{TD} + \bar{k}_h k_{\downarrow cont.} k_{\uparrow cont.} + k_{\downarrow cont.} k_{TD} \bar{k}_{\downarrow ext.} + \bar{k}_h k_{DT} k_{\uparrow cont.} \\
+        p_C &\propto k_{\uparrow ext.} k_{TD} \bar{k}_{\downarrow ext.} + \bar{k}_h k_{\uparrow ext.} k_{TD} + k_s k_{TD} k_{\downarrow ext.} + \bar{k}_h k_{\uparrow ext.} k_{\uparrow cont.} \\
+        p_D &\propto k_s k_{DT} \bar{k}_{\downarrow ext.} + k_{\uparrow ext.} k_{DT} \bar{k}_{\downarrow ext.} + k_s k_{\downarrow cont.} \bar{k}_{\downarrow ext.} + \bar{k}_h k_{\uparrow ext.} k_{DT}
+    \end{split}
+    \end{equation}
+    where the proportionality constant is fixed by the normalization condition $p_A+p_B+p_C+p_D=1$. We see that for each state, its steady-state probability is the sum of the product of rates of all combinations of paths of size 1 and 2 leading to the state, plus the sum of the product of rates of all paths of size 3 leading to the state.
+    
+    Similarly to the SC/2R model, we compute the average velocity $\left\langle v \right\rangle$ and express it as a function of the concentration ratio, the ATP consumption rate $r_{ATP}$, and the net ATP consumed per translocated residue:
+    \begin{equation}
+    \label{eq:rpcl-quantities-of-interest}
+    \begin{split}
+        &\begin{split}
+            \left\langle v \right\rangle 
+            &\propto \Delta x \left(\bar{k}_h k_{\uparrow ext.} k_{DT} k_{\uparrow cont.} - k_s k_{\downarrow cont.} k_{TD} \bar{k}_{\downarrow ext.}\right) \\
+            &\propto \Delta x \left(1 - \left.\frac{[T]}{[D]}\right|_{eq.}\bigg/\frac{[T]}{[D]}\right) \bar{k}_h k_{\uparrow ext.} k_{DT} k_{\uparrow cont.}
+        \end{split} \\
+        &r_{ATP} \propto \bar{k}_h k_{\uparrow ext.} k_{DT} k_{\uparrow cont.} - k_s k_{\downarrow cont.} k_{TD} \bar{k}_{\downarrow ext.} \\
+        &\frac{\#\text{ATP}}{\#\text{residue}} = \frac{r_{ATP}}{\left\langle v \right\rangle} = \frac{1}{\Delta x} = 0.1
+    \end{split}
+    \end{equation}
+    where the proportionality constant is the same as the steady-state probabilities Eq.~\ref{eq:rpcl-steady-state-probabilities}. All the conclusions of the SC/2R model due to being made of a single fundamental cycle hold for the RPCL model as well, with the difference that the ATP consumed per translocated residue is five times smaller.
+    
+    

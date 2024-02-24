@@ -1,0 +1,247 @@
+\documentclass{article}
+
+\usepackage{tikz}
+\usepackage{graphicx} % Required for inserting images
+
+\usepackage[pdftex]{hyperref} 
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\usepackage{chemfig}
+\usepackage[version=4]{mhchem}
+%\usepackage{fdsymbol}
+
+\usepackage[style=iso-numeric]{biblatex}
+\addbibresource{citations.bib}
+
+\begin{document}
+
+\input{titlepage}
+
+\tableofcontents
+\pagebreak
+
+\section{Introduction}
+\label{sec:introduction}
+\input{sections/introduction}
+
+\section{Theory of master equation and kinetic scheme}
+\label{sec:theory}
+\input{sections/theory}
+
+\section{Translocation models}
+\label{sec:models}
+\input{sections/translocation_models}
+
+\section{Experiments}
+\label{sec:experiments}
+\input{sections/experiments}
+
+\section{Conclusion}
+\label{sec:conclusion}
+\input{sections/conclusion}
+
+\section*{Acknowledgments}
+    I want to thank my advisor, Pr. De Los Rios, for his guidance and support throughout this project, his trust in my independent work, and his compassion in difficult personal situations. I'd also like to thank my sister, Aude, to whom I dedicate this work and with whom I've spent the best years of my studies and my life so far. Her advice throughout my academic and personal life has been invaluable, and I am grateful for her support and love. I wish her the best for her future, academic or otherwise; only time will tell. It is with a lot of emotion that I conclude this work and my studies, and I hope it will be the beginning of a new chapter in my life.
+
+\printbibliography
+
+\appendix
+
+\section{Master equation derivation}
+\label{app:master-equation}
+    The master equations are the differential equations that govern the evolution of the probability distribution $p_i(t)$ of being in state $i$ at a given time $t$. Let's derive it partially rigorously.
+
+    Let $S(t)$ be the random variable representing the system's state at time $t$. There are $N$ discrete states denoted by the letters $i,j,k$. The set of predecessors and successors of state $i$ are denoted by $R_i^-$ and $R_i^+$, respectively. The transition rates from state $i$ to state $j$ are denoted by $k_{ij}$. The transition rates are non-negative, and we use the convention that $k_{ij}=0$ if $j\notin R_i^+$, $k_{ij}=0$ if $i\notin R_j^-$, and $k_{ii}=0$ for all $i=1,2,\dots,N$.
+    
+    First, consider a single reaction $i\to j$. We associate to this reaction a random variable $T_{ij}$ denoting the time it takes for the reaction to occur. Since the reaction follows an exponential distribution, we have the following:
+    \begin{equation}    
+        \mathbb{P}(T_{ij}<t) = 1-\exp(-k_{ij}t)
+    \end{equation}
+    
+    Then, suppose we are in state $i$, and let's study the passage from this state to a chosen successor $j^*\in R_i^+$. Consider the event $\left<i\xrightarrow{\Delta t}j^*\right> :=$ \textit{the system has jumped from $i$ to $j^*$ at some time in the interval $[t,t+\Delta t]$}. This event is equivalent to the event $\{(T_{ij^*}<\Delta t) \wedge (\forall j\neq j^*, T_{ij}>\Delta t)\}$. Since the reactions are independent, the joint probability of the reaction times splits into the product of the individual probabilities. Therefore, the probability of the abovementioned event is given by:
+    \begin{equation}
+    \begin{split}
+        &\mathbb{P}\left((T_{ij^*}<\Delta t) \wedge (\forall j\neq j^*, T_{ij}>\Delta t)\right) \\
+        &= \mathbb{P}(T_{ij^*}<\Delta t)\prod_{j\neq j^*}\mathbb{P}(T_{ij}>\Delta t) \\
+        &= (1-\exp(-k_{ij^*}\Delta t))\exp(-\sum_{j\neq j^*}k_{ij}\Delta t) \\
+        &= (1 - (1 - k_{ij^*}\Delta t + o(\Delta t)))(1 - \sum_{j\neq j^*}k_{ij}\Delta t + o(\Delta t)) \\
+        &= k_{ij^*}\Delta t + o(\Delta t)
+    \end{split}
+    \end{equation}
+    where we used the 1st-order Taylor expansion of the exponential function. 
+    
+    Moreover, the event $\left<i\xrightarrow{\Delta t}i\right>:=$ \textit{the system stayed in state $i$ during a time interval of length $\Delta t$} has probability:
+    \begin{equation}
+    \begin{split}
+        &\mathbb{P}(\forall j\in R_i^+, T_{ij}>\Delta t) 
+        = \prod_{j\in R_i^+}\mathbb{P}(T_{ij}>\Delta t) 
+        = e^{-\sum_{j\in R_i^+}k_{ij}\Delta t} \\
+        &= 1 - \sum_{j\in R_i^+}k_{ij}\Delta t + o(\Delta t)
+    \end{split}
+    \end{equation}
+    
+    Finally, we derive the desired master equation. To be in state $j^*$ at time $t+\Delta t$, there are logically only two possibilities: either the system was already in state $j^*$ at time $t$ and did not jump to any other state in the interval $[t,t+\Delta t]$, or the system was in another state $i\in R_{j^*}^-$ at time $t$ and jumped to $j^*$ in the interval $[t,t+\Delta t]$. We control the size of the interval $\Delta t$ such that maximum one reaction can occur during the interval $[t,t+\Delta t]$. The jump probabilities at a given time are difficult to compute, but what the conditional jump probability \emph{given} that we start in a given state $i$ at time $t$, namely $\left<i\xrightarrow{\Delta t} j\right>$ are known. Therefore, we can write the probability of being in state $j^*$ at time $t+\Delta t$ as:
+    \begin{equation}
+    \begin{split}
+        &\mathbb{P}(S(t+\Delta t)=j^*) \\
+        &= \mathbb{P}(S(t)=j^*)\mathbb{P}(\left<j^*\xrightarrow{\Delta t}j^*\right>) + \sum_{i\in R_{j^*}^-}\mathbb{P}(S(t)=i)\mathbb{P}(\left<i\xrightarrow{\Delta t}j^*\right>) \\
+        &= \mathbb{P}(S(t)=j^*)(1 - \sum_{k\in R_{j^*}^+}k_{j^*k}\Delta t) + \sum_{i\in R_{j^*}^-}\mathbb{P}(S(t)=i)(k_{ij^*}\Delta t) + o(\Delta t)
+    \end{split}
+    \end{equation}
+    
+    Reordering the terms, we find
+    \begin{multline}
+        \frac{\mathbb{P}(S(t+\Delta t)=j^*) - \mathbb{P}(S(t)=j^*)}{\Delta t} \\
+        = \sum_{i\in R_{j^*}^-}\mathbb{P}(S(t)=i)k_{ij^*} - \mathbb{P}(S(t)=j^*)\sum_{k\in R_{j^*}^+}k_{j^*k} + \frac{o(\Delta t)}{\Delta t}
+    \end{multline}
+    
+    Taking the limit $\Delta t\to 0$, we find the master equation
+    \begin{equation}
+        \frac{d\mathbb{P}(S(t)=j^*)}{dt} = \sum_{i\in R_{j^*}^-}\mathbb{P}(S(t)=i)k_{ij^*} - \mathbb{P}(S(t)=j^*)\sum_{k\in R_{j^*}^+}k_{j^*k}
+    \end{equation}
+    
+    Applying the same reasoning to all states $j^*=1,2,\dots,N$, changing the dummy indices, using the convention $k_{ij}=0$ when states $i$ and $j$ are not connected, and using the notation $p_i(t) = \mathbb{P}(S(t)=i)$, we find the $N$ coupled differential equations
+    \begin{equation}
+        \dot{p}_i(t) = \sum_{j\in R_i^-}p_j(t)k_{ji} - p_i(t)\sum_{j\in R_i^+}k_{ij} = \sum_{j=1}^N \left(p_j(t)k_{ji} - p_i(t)k_{ij}\right)
+    \end{equation}
+
+\section{Existence and uniqueness of the steady-state distribution}
+\label{app:steady-state-dist}
+    Consider a system represented by its $N$-dimensional master equation $\dot{\mathbf{p}}(t) = \mathbf{M}\mathbf{p}(t)$, where $\mathbf{p}(t)$ is the column vector of components $p_i(t)$ and $\mathbf{M}$ is the matrix of components $M_{ij}=k_{ji} - \delta_{ij}\sum_{k=1}^N k_{ik}$, where $\delta_{ij}$ is the Kronecker delta. We assume that the corresponding kinetic scheme of the system is connected, and we use the convention $k_{ii}=0$.
+    We show that the system has a unique steady-state distribution $\mathbf{p}^*$, i.e. a solution of the equation $\mathbf{M}\mathbf{p}^* = 0$.
+
+    \begin{proposition}
+        A solution of the continuous time system $\dot{\mathbf{p}}(t) = \mathbf{M}\mathbf{p}(t)$ is a steady-state if and only if it is a fixed-point of a discrete-time system $\mathbf{p}^{(t+1)} = \mathbf{W}\mathbf{p}^{(t)}$ with stochastic matrix $\mathbf{W} := \mathbf{I} + \Delta t \mathbf{M}$, where $\mathbf{I}$ is the identity matrix and $\Delta t := \frac{1}{N\max_{i,j}k_{ij}}$.
+    \end{proposition}
+
+    \begin{proof}
+        \begin{equation}
+            \underbrace{\mathbf{p} \overset{!}{=} \mathbf{W}\mathbf{p}}_\text{fixed-point} 
+            = \mathbf{p} + \Delta t \mathbf{M}\mathbf{p}
+            \iff \underbrace{\mathbf{M}\mathbf{p} = \mathbf{0}}_\text{steady-state}
+        \end{equation}
+    \end{proof}
+
+    \begin{lemma}
+        Any element of the stochastic matrix $\mathbf{W}$ is non-negative, and the sum of any column is 1.
+    \end{lemma}
+    
+    \begin{proof} 
+        \begin{multline}
+            W_{ij} 
+            = \delta_{ij} + M_{ij}\Delta t 
+            = \delta_{ij} + (k_{ji} - \delta_{ij}\sum_{k=1}^N k_{ik})\Delta t \\
+            = k_{ji}\Delta t + \delta_{ij} \left(N\max_{i,j}k_{ij} - \sum_{k=1}^N k_{ik}\right)\Delta t
+            \geq 0
+        \end{multline}
+        and
+        \begin{equation}
+            \sum_{i=1}^N W_{ij}
+            = 1 + \sum_{i=1}^N \left(k_{ji} - \delta_{ij}\sum_{k=1}^N k_{ik}\right) \Delta t
+            = 1 + \left(\sum_{i=1}^N k_{ji} - \sum_{k=1}^N k_{jk}\right) \Delta t
+            = 1
+        \end{equation}
+    \end{proof}
+
+    \begin{proposition}
+        There exists a fixed-point $\mathbf{p}^*$ of the discrete time system on the probability simplex $\Delta_N := \{\mathbf{p}\in\mathbb{R}^N \mid \sum_{i=1}^N p_i = 1 \wedge \forall i, p_i\geq 0\}$.
+    \end{proposition}
+
+    \begin{proof}
+        First, $\mathbf{W}$ is an endomorphism $\mathbf{W}: \Delta_N \to \Delta_N$, since for $\mathbf{p}^{(t)}\in \Delta_N$, we have
+        \begin{equation}
+            p_i^{(t+1)} 
+            = \left(\sum_{j=1}^N W_{ij}p_j^{(t)}\right) 
+            = \sum_{j=1}^N \underbrace{W_{ij}}_{\geq 0}  p_j^{(t)} 
+            \geq 0
+        \end{equation}
+        and
+        \begin{equation}
+            \sum_{i=1}^N p_i^{(t+1)} 
+            = \sum_{i=1}^N \left(\sum_{j=1}^N W_{ij}p_j^{(t)}\right) 
+            = \sum_{j=1}^N \underbrace{\left(\sum_{i=1}^N W_{ij}\right)}_{=1}  p_j^{(t)} 
+            = \sum_{j=1}^N p_j^{(t)} 
+            = 1
+        \end{equation}
+    
+        Moreover, $\mathbf{W}$ is linear and thus continuous, and $\Delta_N$ is a compact convex set. Therefore, the Brouwer fixed-point theorem implies the existence of a fixed-point, which we call $\mathbf{p}^*$.
+    \end{proof}
+
+    \begin{proposition}
+    \label{prop:coordinates}
+        The coordinates of the fixed point $\mathbf{p}^*\in \Delta_N$ are strictly within $]0, 1[$.
+    \end{proposition}
+
+    \begin{proof}
+        If the kinetic scheme of the continuous-time system is connected, then so is the kinetic scheme of the discrete-time system. Therefore, by definition of connectivity, $(W^N)_{i,j}>0$, $\forall i,j$. Moreover, since $\mathbf{p}^*$ is a fixed-point, we have $\mathbf{p}^* = \mathbf{W^N}\mathbf{p}^*$. First, any coordinate is strictly positive:
+        \begin{equation}
+            p_i^* = \sum_{j=1}^N (W^N)_{i,j}p_j^* > 0 
+        \end{equation}
+        since it is a sum of non-negative terms, and at least one of them is strictly positive. On the other hand, if one coordinate is 1, all the others must be zero since the sum of the coordinates is 1, which contradicts the previous statement. Therefore, all the coordinates of $\mathbf{p}^*$ are strictly within $]0, 1[$.
+    \end{proof}
+
+    \begin{corollary}
+    \label{cor:unique}
+        The fixed-point $\mathbf{p}^*\in \mathring\Delta_N$ is unique on $\mathring\Delta_N$.
+    \end{corollary}
+
+    \begin{proof}
+        Prop.~\ref{prop:coordinates} restricts the existence of a fixed-point on the boundary of the probability simplex $\Delta_N$. Now assume there exists another fixed-point $\mathbf{q}^*\in \mathring\Delta_N$, different from $\mathbf{p}^*$. By linearity, any linear combination of $\mathbf{p}^*$ and $\mathbf{q}^*$ is also a fixed-point of $\mathbf{W}$. Therefore, there must exists a linear combination $\mathbf{r}^* = \alpha(\mathbf{p}^* + \beta\mathbf{q}^*)$ that lies on an edge of the probability simplex ($\mathbf{p}^*$ and $\mathbf{q}^*$ differ on at least one coordinate, $p^*_i\neq q^*_i \neq 0$, choose $\beta = -\frac{p^*_i}{q^*_i}$ and choose $\alpha$ so that $\mathbf{r}^*$ is normalized), which contradicts Prop.~\ref{prop:coordinates}. 
+    \end{proof}
+
+    \begin{proposition}
+    \label{prop:unique}
+        The fixed-point $\mathbf{p}^*\in \mathring\Delta_N$ is unique (up to a constant) on $\mathbb{R}^N$.
+    \end{proposition}
+
+    \begin{proof}
+        The proof is similar to Cor.~\ref{cor:unique}. Assume there exists a fixed-point $\mathbf{q}^*$ in a different orthant than the probability simplex. Then, construct the linear combination $\mathbf{r}^* = \alpha(\mathbf{p}^* + \beta\mathbf{q}^*)$ that lies on the boundary of the probability simplex ($\mathbf{p}^*$ and $\mathbf{q}^*$ differ on at least one nonzero coordinate, $p^*_i\neq q^*_i \neq 0$, choose $\beta = -\frac{p^*_i}{q^*_i}$ and choose $\alpha$ so that $\mathbf{r}^*$ is normalized), which contradicts Prop.~\ref{prop:coordinates}.
+    \end{proof}
+
+    \begin{theorem}
+        The fixed-point $\mathbf{p}^*\in \Delta_N$ is the unique steady-state distribution of the continuous-time system $\dot{\mathbf{p}}(t) = \mathbf{M}\mathbf{p}(t)$.
+    \end{theorem}
+    
+    \begin{proof}
+        Prop.~\ref{prop:unique} says that the subspace of fixed-points of $\mathbf{W}$ has dimension 1. The relation between $\mathbf{W}$ and $\mathbf{M}$ immediately implies that the kernel of the latter is also of dimension 1. Therefore, the linear system $\mathbf{M}\mathbf{p}^* = \mathbf{0}$ has a unique solution (up to a constant). The steady-state $\mathbf{p}^*$ is the positive and normalized solution.
+    \end{proof}
+
+    \begin{remark}
+        To show the global convergence property of the steady-state distribution, one has to use the Liapunov function presented in \cite{schnakenberg_network_1976}.
+    \end{remark}
+
+\section{Non-ideal models, presence of an \emph{out} state}
+\label{app:non-ideal-model}
+In the idealized models we introduced in Secs.~\ref{subsec:sc2r-model}~and~\ref{subsec:rpcl-model}, we considered that the ATPase is always in one of the $N$ states of the \emph{main loop}. To alleviate this assumption, we add a single \emph{out} state connected to every state of the main loop, representing any state not considered in the ideal model. This could be, for example, a situation where a second protomer hydrolyzes or exchanges its ATP, which are situations not currently considered in the main loop. Adding this state to the kinetic scheme introduces new thermodynamic loop laws, which result in $N-1$ independent constraints on the rates. To simplify, we consider that the rate from the \emph{out} state to any state of the main loop is the same, and we denote it by $k_{in}$. It remains to fix the out rate $k_{out}$ from an arbitrary main loop state, and then all the other out rates are constrained by loop laws.
+
+In Fig.~\ref{fig:non-ideal}, we show that, as one would expect, the time spent in the main loop, measured by the summed steady-state probabilities of the main loop states, diminishes as $k_{out}$ increases.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/non_ideal.pdf}
+    \caption{Effect of adding an \emph{out} state to the ideal models representing any other state. The probability of being in a state belonging to the ideal SC/2R (yellow) and RPCL (blue) models as a function of the exit rate to the \emph{out} state is shown.}
+    \label{fig:non-ideal}
+\end{figure}
+
+\section{Relation between average velocity and [ATP]/[ADP]}
+\label{app:average-velocity-vs-atp-adp-ratio}
+Here, we confirm numerically the analytical prediction in Eqs.~\eqref{eq:sc2r-average-velocity}~and~\eqref{eq:rpcl-quantities-of-interest} that average velocity for both SC/2R and RPCL models is positively related with the deviation of [ATP]/[ADP] concentration ratio from its equilibrium value, with a proportional relation in the limit of small deviation, and saturation in the limit of large deviation. We show in Fig.~\ref{fig:velocity-vs-atp-adp-ratio} the average velocity as a function of the ratio [ATP]/[ADP] over its equilibrium value for both models. We see that the average velocity matches the described behavior. The reason for saturation is similar to the one for the force-velocity relation in Sec.~\ref{subsec:force}. In a nutshell, the reaction affected by the value of [ATP]/[ADP] becomes so favored that it can be effectively removed, and then the flux on the loop of the kinetic scheme is limited by the other reactions.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/velocity_vs_atp_adp_ratio.pdf}
+    \caption{Variation of the average translocation velocity of SC/2R (yellow) and RPCL (blue) models when the [ATP]/[ADP] concentration ratio deviates from its equilibrium value.}
+    \label{fig:velocity-vs-atp-adp-ratio}
+\end{figure}
+
+
+\end{document}

@@ -1,0 +1,225 @@
+Consider a stochastic system evolving continuously, jumping from one discrete state to another. The state of the system at time $t$ is denoted by the random variable $S(t)=i$, where $i=1,2,\dots,N$, and we assume that the state entirely determines the system, i.e. the trajectory of the system is independent of its history. In other terms, the system is a continuous time Markov chain.
+The transitions between the states represent physical or chemical reactions that we assume are all reversible and independent of each other. Each reaction $i\to j$ follows an exponential distribution of rate $k_{ij}$.
+The dynamics are the following: the system starts in state $i$ at time $t=0$, sojourns there until one reaction $i\to j$ occurs, and then immediately jumps to state $j$. The system then sojourns in state $j$ until another reaction $j\to k$ occurs, and so on. 
+
+We can represent such a system with a kinetic scheme, a directed graph where each node represents a state, and each reaction $i\to j$ is represented by a directed edge from $i$ to $j$, weighted with the reaction rate $k_{ij}$. We denote the successors and predecessors of a state $i$ by $R_i^+$ and $R_i^-$ respectively. 
+We assume that the kinetic scheme is connected. If not, the system would have several independent subsystems that could be studied separately. 
+
+Given the stochastic nature of the system, we are interested in the probability of being in state $j$ at a given time $t$, denoted by $p_j(t):=\mathbb{P}(S(t)=j)$. Its time evolution is given by the $N$ coupled differential master equations:
+\begin{equation}
+\label{eq:master-equation-kinetic-scheme}
+    \dot{p}_j(t) = \sum_{i\in R_j^-}p_i(t)k_{ij} - p_j(t)\sum_{k\in R_j^+}k_{jk} = \sum_{i=1}^N \left(p_i(t)k_{ij} - p_j(t)k_{ji}\right)
+\end{equation}
+where we used the convention $k_{ii}=0$ for all $i$ and $k_{ij}=0$ if there is no edge from $i$ to $j$ in the kinetic scheme. See App.~\ref{app:master-equation} for a rigorous derivation.
+We can rewrite the master equation in matrix form:
+\begin{equation}
+\label{eq:master-equation-matrix-form}
+    \dot{\mathbf{p}}(t) = \mathbf{M}\mathbf{p}(t)
+\end{equation}
+where $\mathbf{p}(t)$ is the column vector of components $p_i(t)$ and $\mathbf{M}$ is the matrix of components $M_{ij}=k_{ji} - \delta_{ij}\sum_{k=1}^N k_{ik}$, where $\delta_{ij}$ is the Kronecker delta.
+With the initial condition $\mathbf{p}(0)$, the solution of Eq~\eqref{eq:master-equation-matrix-form} is:
+\begin{equation}
+    \mathbf{p}(t) = e^{\mathbf{M}t}\mathbf{p}(0)
+\end{equation}
+
+These systems have interesting properties, the most important being the existence and uniqueness of an attracting steady-state distribution $\mathbf{p}^*$, which is in addition globally stable, i.e., any initial condition converges to $\mathbf{p}^*$ as $t\to\infty$, exponentially fast moreover. The properties of such systems are discussed in detail in~\cite{schnakenberg_network_1976}. Still, for mathematical elegance, we give an alternative proof of the existence and uniqueness of the steady-state distribution in App.~\ref{app:steady-state-dist} using almost solely linear algebra. 
+To sum up, the stochastic matrix $M$ has rank $N-1$, and thus, the steady-state distribution is given by the unique positive and normalized solution of the linear system:
+\begin{equation}
+\label{eq:steady-state-dist}
+    \mathbf{M}\mathbf{p}^* = \mathbf{0}
+\end{equation} 
+A convenient way to directly find the steady-state distribution is to note that the sum of the first $N-1$ rows equals minus the last row:
+\begin{equation}
+    \sum_{i=1}^{N-1} M_{ij} = \sum_{i=1}^{N-1} k_{ji} - (1-\delta_{jN})\sum_{k=1}^N k_{jk} = -k_{jN} + \delta_{jN}\sum_{k=1}^N k_{Nk} = -M_{Nj}
+\end{equation}
+which means that we can remove the last row without changing the solution of the linear system. Therefore, we modify $\mathbf{M}$ to $\tilde{\mathbf{M}}$ by replacing the last row with ones, and then the steady-state distribution is the unique solution of the linear system:
+\begin{equation}
+\label{eq:steady-state-tricks}
+    \tilde{\mathbf{M}}\mathbf{p}^*
+    =
+    \begin{pmatrix}
+        M_{1,1} & \cdots & M_{1,N} \\ 
+        \vdots  & \ddots & \vdots  \\ 
+        M_{N-1,1} & \cdots & M_{N-1,N} \\ 
+        1 & \cdots & 1
+    \end{pmatrix}
+    \cdot
+    \begin{pmatrix}
+        p_1^*\\ 
+        \vdots\\ 
+        p_{N-1}^*\\ 
+        p_N^*
+    \end{pmatrix}
+    =
+    \begin{pmatrix}
+        0\\ 
+        \vdots\\ 
+        0\\ 
+        1
+    \end{pmatrix}
+\end{equation}
+since the newly added row constrains the solution to be normalized. This gives a general method to solve any system defined by a master equation, or equivalently a kinetic scheme. However, note that solving Eq~\eqref{eq:steady-state-tricks} does not give a deep understanding of the system. The physical meaning comes after algebraic manipulations of the solution. To the best of the author's knowledge, such manipulations are model-dependent and cannot be generalized.
+
+\subsection{Thermodynamic loops}
+    At equilibrium, we postulate that the detailed balance holds, i.e. each elementary process $i\to j$ is in equilibrium with its reverse process $j\to i$. Intuitively, this means that the probability flux from $i$ to $j$ equals the flux from $j$ to $i$. Mathematically, this is expressed by:
+    \begin{equation}
+        \left.\left(p_i^*k_{ij}\right)\right|_{eq.} = \left.\left(p_j^*k_{ji}\right)\right|_{eq.} 
+        \Leftrightarrow \left.\left(\frac{p_i^*k_{ij}}{p_j^*k_{ji}}\right)\right|_{eq.} = 1
+    \end{equation}
+    for all $i,j$, where $\left.p_i^*\right|_{eq.}$ is the equilibrium probability of being in state $i$, which is the steady-state probability when the system is \emph{isolated}. Being isolated means that there are no external factors pushing the system out of equilibrium, which includes not being in contact with a heat bath, experiencing no applied forces, or receiving no ATP input. When isolated, all the rates $k_{ij}$ are at their equilibrium values $\left.k_{ij}\right|_{eq.}$.
+    
+    Now consider any closed loop in the equilibrium kinetic scheme, i.e. a sequence of reactions $i_1\to i_2\to\dots\to i_n\to i_1$ where $i_1,\dots,i_n$ are distinct states. By multiplying together each reaction's detailed balance equation in the loop, with the convention $i_{n+1}=i_1$, we obtain:
+    \begin{equation}
+    \label{eq:thermo-loop-law}
+    \begin{split}
+        1
+        &= \left.\left(\prod_{j=1}^n \frac{p_{i_j}^*k_{i_ji_{j+1}}}{p_{i_{j+1}}^*k_{i_{j+1}i_j}}\right)\right|_{eq.} \\
+        &= \left.\left(\frac{\left(\prod_{j=1}^n p_{i_j}^*\right)\left(\prod_{j=1}^n k_{i_ji_{j+1}}\right)}{\left(\prod_{j=1}^n p_{i_{j+1}}^*\right)\left(\prod_{j=1}^n k_{i_{j+1}i_j}\right)}\right)\right|_{eq.} \\
+        &= \left.\left(\frac{\prod_{j=1}^n k_{i_ji_{j+1}}}{\prod_{j=1}^n k_{i_{j+1}i_j}}\right)\right|_{eq.}
+    \end{split}
+    \end{equation}
+    i.e. at equilibrium, the product of the reaction rates in a direction of the loop is equal to the product of the reaction rates in the reverse direction. This \emph{thermodynamic loop law} constrains the rates of the reactions in the loop: when all the rates except one are chosen, the last one is fixed by the thermodynamic loop law. Note that this law holds even if the loop is connected to other reactions.
+
+    Going further, when the system is not isolated, its steady-state distribution differs a priori from the equilibrium one. In steady-state, the detailed balance does not hold anymore, and the thermodynamic loop law becomes:
+    \begin{equation}
+        \frac{\prod_{j=1}^n k_{i_ji_{j+1}}}{\prod_{j=1}^n k_{i_{j+1}i_j}} 
+        = \exp\left(\frac{\Delta\mu}{T}\right)
+    \end{equation}
+    where $\Delta\mu\neq 0$ is a thermodynamic force difference that drives the loop out of equilibrium. Despite this, the thermodynamic loop law Eq.~\eqref{eq:thermo-loop-law} derived at equilibrium remains valid even when the system is not isolated, and in particular it constrains constants of the system since, by definition, they are constants and thus have the same value at- and out-of-equilibrium.
+    
+    Finally, even though each loop in the kinetic scheme gives a constraint on the rates, they are not necessarily independent. For any basis of the cycle space of the kinetic scheme, each fundamental cycle gives an independent constraint on the rates. The choice of the basis is not unique, but any choice results in the same set of constraints. The number of fundamental cycles inherently depends on the structure of the kinetic scheme, and it must be determined case by case\cite{schnakenberg_network_1976}.
+
+\subsection{Quantities of interest}
+\label{subsec:quantities-of-interest}
+    Given an initial probability distribution, we know its time evolution and the steady-state distribution to which it converges. However, this distribution only tells us about the probability for the system to be in a given state or, equivalently, a node on the kinetic scheme, but nothing about quantities that change when one or more reactions occur and that are not encompassed in the state description of the system. For example, this could be the substrate translocated length, which is not a state of the system but rather a quantity that changes over time. This section gives general results that will be applied to specific cases later.
+
+    Consider a random variable $X(t)$ representing a quantity that evolves in time. We consider $X$ taking value in $\mathbb{N}$, but the following reasoning can be generalized to other cases. 
+    
+    In general, computing the exact probability distribution for such a quantity can be complex. However, it is easier to find its master equation and then solve it when possible or use it to compute moments of $X(t)$. The formal derivation is in App.~\ref{app:master-equation} except that, unlike Eq.~\eqref{eq:master-equation-kinetic-scheme}, the transition rates are a prior unknown. If we write $p_x(t):=\mathbb{P}(X(t)=x)$ and $w_{xy}$ the transition rate from $x$ to $y$, using the convention $w_{xx}=0$, the master equation is:
+    \begin{equation}
+    \label{eq:proba-diff-equ}
+        \dot{p}_x(t) = \sum_{y\in\mathbb{N}} p_y(t)w_{yx} - p_x(t)\sum_{y\in\mathbb{N}} w_{xy}
+    \end{equation}
+    
+    Multiplying by $x^k$ and summing over $x$ both sides of Eq.~\eqref{eq:proba-diff-equ}, we find a differential equation for the $k$-th moment of the distribution :
+    \begin{equation}
+    \label{eq:moment-diff-eq}
+    \begin{split}
+        \frac{d}{dt}\left\langle X^k(t) \right\rangle 
+        &= \sum_{x\in\mathbb{N}} x^k\dot{p}_x(t)
+        = \sum_{x,y\in\mathbb{N}} x^k p_y(t) w_{yx} - \sum_{x,y\in\mathbb{N}} x^k p_x(t) w_{xy} \\
+        &= \sum_{x,y\in\mathbb{N}} p_y(t) w_{yx} \left(x^k - y^k\right)
+    \end{split}
+    \end{equation}
+    and multiplying by $e^{i\theta x}$ instead, we find a differential equation for the characteristic function $\phi_X(\theta, t):=\left\langle e^{i\theta X(t)}\right\rangle$:
+    \begin{equation}
+    \label{eq:char-diff-eq}
+    \begin{split}
+        \frac{\partial}{\partial t}\phi_X(\theta, t) 
+        &= \sum_{x\in\mathbb{N}} e^{i\theta x}\dot{p}_x(t)
+        = \sum_{x,y\in\mathbb{N}} e^{i\theta x} p_y(t) w_{yx} - \sum_{x,y\in\mathbb{N}} e^{i\theta x} p_x(t) w_{xy} \\
+        &= \sum_{x,y\in\mathbb{N}} p_y(t) w_{yx} \left(e^{i\theta x} - e^{i\theta y}\right)
+    \end{split}
+    \end{equation}
+    where we used the properties of dummy variables and the fact that we sum over the same set of values in both sums.
+    
+    If the transition rates depend solely on the difference, i.e. $w_{xy}=w_{x-y}$, Eqs.~\eqref{eq:moment-diff-eq}~and~\eqref{eq:char-diff-eq} simplify to:
+    \begin{equation}
+    \label{eq:moment-diff-eq-rates-diff}
+        \frac{d}{dt}\left\langle X^k(t) \right\rangle
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x-y} \left(x^k - y^k\right)
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x} \left((y+x)^k - y^k\right)
+    \end{equation}
+    and 
+    \begin{multline}
+    \label{eq:char-diff-equ-simp}
+        \frac{\partial}{\partial t}\phi_X(\theta, t) 
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x-y} \left(e^{i\theta x} - e^{i\theta y}\right)
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x} e^{i\theta y} \left(e^{i\theta x} - 1\right) \\
+        = \sum_{y\in\mathbb{N}} p_y(t) e^{i\theta y} \sum_{x\in\mathbb{N}} w_{x} \left(e^{i\theta x} - 1\right)
+        = \phi_X(\theta, t) \sum_{x\in\mathbb{N}} w_{x} \left(e^{i\theta x} - 1\right)
+    \end{multline}
+    where we used the change of variable $x\mapsto x+y$ and the fact that we sum over the whole set $\mathbb{N}$.
+    
+    We can solve Eq.~\eqref{eq:char-diff-equ-simp} using $\phi_X(0, t)=1$
+    \begin{equation}
+        \phi_X(\theta, t) = \exp\left(t \sum_{x\in\mathbb{N}} w_{x} \left(e^{i\theta x} - 1\right)\right)
+    \end{equation}
+    
+    and then by inverting the Fourier transform, we obtain the probability distribution
+    \begin{multline}
+        p_x(t) = \frac{1}{\tau}\int_0^\tau \phi_X(\theta, t) e^{-i\theta x} d\theta \\
+        = \frac{e^{-t \sum_{y\in\mathbb{N}} w_{y}}}{\tau}\int_0^\tau \exp\left(t \sum_{y\in\mathbb{N}} w_{y} e^{i\theta y} -i\theta x\right) d\theta
+    \end{multline}
+    with $\tau:=2\pi$, which can be solved analytically in some cases, but generally using numerical methods.
+    
+    Next, the mean and standard deviation $\sigma$ of the quantity $X(t)$ are derived from the first and second moments using Eq.~\eqref{eq:moment-diff-eq-rates-diff}:
+    \begin{equation}
+    \label{eq:first-moment}
+        \frac{d}{dt}\left\langle X(t) \right\rangle
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x} x
+        = \sum_{x\in\mathbb{N}} x w_{x}
+        \implies \left\langle X(t) \right\rangle = \left\langle X(0) \right\rangle + t \sum_{x\in\mathbb{N}} x w_{x}
+    \end{equation}
+    \begin{equation}
+    \label{eq:second-moment}
+        \frac{d}{dt}\left\langle X^2(t) \right\rangle
+        = \sum_{x,y\in\mathbb{N}} p_y(t) w_{x} \left(x^2 + 2xy\right)
+        = \sum_{x\in\mathbb{N}} x^2 w_{x} + 2 \left\langle X(t) \right\rangle \underbrace{\sum_{x\in\mathbb{N}} x w_{x}}_{\frac{d}{dt}\left\langle X(t) \right\rangle}
+    \end{equation}
+    and thus
+    \begin{equation}
+    \begin{split}
+    \label{eq:variance-and-std}
+        &\frac{d}{dt}\text{Var}(X(t))
+        = \frac{d}{dt}\left\langle X^2(t) \right\rangle - 2 \left\langle X(t) \right\rangle \frac{d}{dt}\left\langle X(t) \right\rangle
+        = \sum_{x\in\mathbb{N}} x^2 w_{x} \\
+        &\implies \text{Var}(X(t)) = \text{Var}(X(0)) + t \sum_{x\in\mathbb{N}} x^2 w_{x} \\
+        &\implies \sigma(t) = \sqrt{\text{Var}(X(0)) + t \sum_{x\in\mathbb{N}} x^2 w_{x}}
+    \end{split}
+    \end{equation}
+    
+    If the quantity $X(t)$ changes when a reaction occurs, i.e. when an edge of the kinetic scheme is crossed, we can explicitly compute the transition rates. Consider all the reactions that modify $X(t)$ by $x^*$. Then, the transition rate $w_{x^*}$ is the sum over all such reactions of the probability of being at the initial state of the reaction times its reaction rate. Mathematically, if we denote by $R_{x^*}$ the set of reactions that modify $X(t)$ by $x^*$, we have:
+    \begin{equation}
+    \label{eq:quantity-transition-rate}
+        w_{x^*} = \sum_{i\to j\in R_{x^*}} k_{ij} p_i
+    \end{equation}
+    
+    Finally, from Eqs.~\eqref{eq:first-moment}~and~\eqref{eq:quantity-transition-rate}, the average rate of change of the quantity $X(t)$ is given by:
+    \begin{equation}
+    \label{eq:quantity-rate-of-change}
+        \frac{d}{dt}\left\langle X(t) \right\rangle
+        = \sum_{x\in\mathbb{N}} \sum_{i\to j\in R_{x}} x k_{ij} p_i
+    \end{equation}
+    which is physically intuitive: it is the sum over all the reactions that modify $X(t)$ of the probability of being at the initial state of the reaction times its reaction rate.
+
+\subsection{Simulating trajectories via Gillespie algorithm}
+    Generally, the differential equations derived in Sec.~\ref{subsec:quantities-of-interest} cannot be solved analytically, and we must resort to numerical methods. The most straightforward method is to simulate sample trajectories of the system, i.e. the sequence of states visited by the system, and then compute statistics with these trajectories. 
+    Moreover, the simulated trajectories can also give us confidence in our numerical implementation by comparing the statistics computed numerically with their analytical value.
+    
+    The Gillespie algorithm is a method to simulate trajectories for a single particle progressing in time on the kinetic scheme, sojourning in a state until a reaction makes it jump to another state.
+    
+    Starting in state $i$ at time $t=0$, the sojourn time $T_{ij}$ and the next state $j$ are random variables that satisfy the following derivation. Consider the event \emph{reaction $i\to j^*$ occurs in an infinitesimally small interval $[\tau, \tau+\Delta t]$, and no other reaction occurs in $[0, \tau+\Delta t]$}. It is equivalent to $\{(\tau < T_{ij*} < \tau + \Delta t) \wedge (T_{ij} > \tau + \Delta t \text{, } \forall j\neq j*)\}$. Given that all the reactions are independent and follow an exponential distribution with rate $k_{ij}$, the probability of this event is given by:
+    \begin{equation}
+    \begin{split}
+        &\mathbb{P}\left((\tau < T_{ij*} < \tau + \Delta t) \wedge (T_{ij} > \tau + \Delta t \text{, } \forall j\neq j*)\right) \\
+        &= \mathbb{P}(\tau < T_{ij*} < \tau + \Delta t) \prod_{j\neq j*} \mathbb{P}(T_{ij} > \tau + \Delta t) \\
+        &= e^{-k_{ij*}\tau} \left(1 - e^{-k_{ij^*}\Delta t}\right) \prod_{j\neq j*} e^{-k_{ij}(\tau + \Delta t)} \\
+        &= e^{-\sum_j k_{ij}\tau} k_{ij^*} \Delta t + o(\Delta t)
+    \end{split}
+    \end{equation}
+    In the limit $\Delta t\to 0$, we identify the probability density
+    \begin{equation}
+        p(i\to j, \tau | i) = k_{ij} e^{-\sum_j k_{ij}\tau} = k_{i} e^{-k_{i}\tau} \frac{k_{ij}}{k_{i}}
+    \end{equation}
+    where $k_i := \sum_j k_{ij}$ is the total rate of leaving state $i$, and in the last step we multiplied by $\frac{k_i}{k_i}$ which allows us to sample the sojourn time and next state $(\tau, j)$ individually. The first term indicates that the sojourn time $\tau$ before leaving state $i$ follows an exponential distribution, where each reaction rate $k_{ij}$ contributes to the total rate $k_i$. The second term indicates that the next state $j$ is sampled from the successor states of state $i$ with probability proportional to the reaction rate $k_{ij}$.
+    
+    With these mathematical considerations, we can detail the Gillespie algorithm:
+    \begin{enumerate}
+        \item We start in a random state; we choose to sample it from the steady-state probabilities associated with each state so that the system is already in steady-state;
+        \item The sojourn time is sampled from an exponential distribution with rate \emph{the sum of all the reaction rates leaving the current state};
+        \item The next state is sampled from the successor states, with probability proportional to their reaction rates;
+        \item We update the time and the state, then jump back to 2.
+    \end{enumerate}
+    The simulation ends when a stopping criterion is reached, for example, a maximum time or a maximum number of iterations.
+    
