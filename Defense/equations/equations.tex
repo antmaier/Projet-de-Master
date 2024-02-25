@@ -1,0 +1,193 @@
+\documentclass{article}
+\usepackage{chemfig}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{xcolor}
+\usepackage{chemfig}
+\usepackage[version=4]{mhchem}
+\begin{document}
+
+\schemestart
+    A 
+    \arrow(A--B){<=>[*{90} $k_{AB}$][*{90} $k_{BA}$]}[-90,1.5] 
+    B
+    \arrow(@B--C){<=>[$k_{BC}$][$k_{CB}$]}[,1.5]
+    C
+    \arrow(@C--D){<=>[$k_{CD}$][$k_{DC}$]}[90,1.5]
+    D
+    \arrow(@A--@D){<=>[$k_{AD}$][$k_{DA}$]}[,1]
+    \arrow(@A--@C){<=>[$k_{AC}$][$k_{CA}$]}[,1]
+\schemestop
+
+\section{asd}
+$$
+M_{ij} = k_{ji} - \delta_{ij}\sum_{k=1}^N k_{ik}
+$$
+
+$$
+\frac{\prod_{\; \;}k_{ij}}{\prod_{\; \;}k_{ji}}
+= \exp\left({\frac{\Delta \mu}{T}}\right)
+$$
+
+$$
+X(t) \in \mathbb{N}
+$$
+
+$$
+\frac{d}{dt} \langle X^k(t)\rangle
+=\sum_{x,y\in\mathbb{N}}p_x(t)w_{xy}\left(y^k-x^k\right)
+$$
+
+$$
+w_{xy} = w_{\Delta x=y-x} 
+= \sum_{(i \rightarrow j) \in R_{\Delta x}}p_i(t)k_{ij}
+$$
+
+$$
+\langle X(t)\rangle
+= t \sum_{\Delta x, R_{\Delta x}} \Delta x p_i(t) k_{ij} \left(+ \langle X(0)\rangle\right)
+$$
+
+$$
+\mathrm{Var}\left(X(t)\right)
+= t \sum_{\Delta x, R_{\Delta x}} (\Delta x)^2 p_i(t) k_{ij} \left(+ \mathrm{Var}\left(X(0)\right)\right)
+$$
+
+$$
+\tau \sim \mathrm{Exp}(k_i)
+$$
+
+$$
+j^* \sim \mathrm{WeightedSampling}\left(\frac{k_{ij^*}}{k_i}\right)
+$$
+
+$$
+k_i := \sum_j k_{ij}
+$$
+
+\begin{equation}
+\begin{split} 
+\frac{k_{DT}}{k_{TD}}
+&= \left.\frac{k_{DT}}{k_{TD}}\right|_{eq.}
+\left(
+\frac{[T]}{[D]}
+\middle/
+\left.\frac{[T]}{[D]}\right|_{eq.}
+\right)
+\end{split}
+\end{equation}
+% 
+%&=\frac{K_d^D}{K_d^T} \frac{[T]}{[D]}
+%\left(
+%\left.\frac{[T]}{[D]}\right|_{eq.}
+%\middle/
+%\left.\frac{[T]}{[D]}\right|_{eq.}
+%\right)\\
+
+$$
+\Delta\mu \propto \log
+\left(
+\frac{[T]}{[D]}
+\middle/
+\left.\frac{[T]}{[D]}\right|_{eq.}
+\right)
+$$
+
+\begin{equation}
+\begin{split}
+&r_{ATP}
+    \propto \left(1 - \left.\frac{[T]}{[D]}\right|_{eq.}\bigg/\frac{[T]}{[D]}\right) k_h k_\uparrow k_{DT} \\
+&\langle v \rangle = \Delta x \cdot r_{ATP}  
+\end{split}
+\end{equation}
+
+\begin{equation}
+\begin{split}
+&\mathcal{L} = \frac{1}{2}k \sum_{i=1}^{N-1} (h_i - h_0)^2 + \frac{1}{2}k' (h_N - h_0)^2 - \lambda \sum_{i=1}^N h_i \\
+&\implies
+\begin{cases}
+    h_{i\neq N} = h_0 \frac{k-k'}{(N-1)k'+k}, & \\
+    h_N = -(N-1) h_{i\neq N} &
+\end{cases}
+\end{split}
+\end{equation}
+
+\vspace*{0.5cm}
+\begin{center}
+    \schemestart
+    A
+    \arrow(FlatT--FlatD){<->>[*0 $\textcolor{red}{\bar{k}_h}$][*0 $k_s$]}[-90,1.1] 
+    B
+    \arrow(@FlatD--ExtendedD){<->>[$k_{\uparrow ext.}$][$k_{\downarrow cont.}$]}[,1.1]
+    C
+    \arrow(@ExtendedD--ExtendedT){<->>[*0 $k_{DT}$][*0 $k_{TD}$]}[90,1.1]
+    D
+    \arrow(@FlatT--@ExtendedT){<<->[$\textcolor{red}{\bar{k}_{\downarrow ext.}}$][$k_{\uparrow cont.}$]}[,1.1]
+\schemestop
+\end{center}
+\vspace*{0.5cm}
+
+$$
+\Delta h = 2 \implies \Delta x = 10
+$$
+
+\begin{equation}
+\begin{split}
+&r_{ATP}
+    \propto \left(1 - \left.\frac{[T]}{[D]}\right|_{eq.}\bigg/\frac{[T]}{[D]}\right) \bar{k}_h k_{\uparrow ext.} k_{DT} k_{\uparrow cont.} \\
+&\langle v \rangle = \Delta x \cdot r_{ATP}  
+\end{split}
+\end{equation}
+
+\begin{equation}
+\begin{split}
+&r_{ATP}
+    \propto \left(1 - \left.\frac{[T]}{[D]}\right|_{eq.}\bigg/\frac{[T]}{[D]}\right) \prod \; \; k \\
+&\langle v \rangle = \Delta x \cdot r_{ATP}  
+\end{split}
+\end{equation}
+
+\begin{center}
+    \schemestart
+        A
+        \arrow(A--B){<->>[*0 $k_h$][*0 $k_s$]}[-90,1] 
+        B
+    \schemestop
+    \chemmove{
+        \draw[red,shorten <=8pt,shorten >=8pt]
+        (A).. controls +(-45:10mm) and +(45:10mm).. 
+        node[shift=(0:4mm)] {$k_{TD}$} (B);
+    }
+\end{center}
+
+\begin{equation}
+\begin{cases}
+    p_A \propto k_s k_{DT} + k_\downarrow k_s + k_\uparrow k_{DT} \\
+    p_B \propto k_h k_\downarrow + k_{DT} k_h + k_{TD} k_\downarrow \\
+    p_C \propto k_\uparrow k_{TD} + k_s k_{TD} + k_h k_\uparrow
+\end{cases}
+\end{equation}
+
+\begin{equation}
+\begin{cases}
+    p_A \propto k_s \\
+    p_B \propto k_h + k_{TD}
+\end{cases}
+\end{equation}
+
+$$
+k, k'
+$$
+
+\begin{equation}
+\left\{
+\begin{split}
+    \frac{d[\text{PT}]}{dt} &= k_{on}^T [\text{P}][\text{T}] - k_{off}^T [\text{PT}] \\
+    \frac{d[\text{PD}]}{dt} &= k_{on}^D [\text{P}][\text{D}] - k_{off}^D [\text{PD}] \\
+    \frac{d[\text{P}]}{dt} &= k_{off}^T [\text{PT}] + k_{off}^D [\text{PD}] - (k_{on}^T + k_{on}^D) [\text{P}]
+\end{split}
+\right.
+\end{equation}
+
+
+\end{document}
