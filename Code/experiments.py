@@ -150,9 +150,9 @@ class SC2RVsRPCL(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -160,8 +160,8 @@ class SC2RVsRPCL(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
+            'k_down_contract': HTML(description="k_⮩:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -207,15 +207,15 @@ class SC2RVsRPCL(Experiment):
                           HTML(value="Number of protomers")]),
                     HBox([self.constrained_parameters['k_h_bar'],
                           HTML(value="Effective ATP hydrolysis rate")]),
-                    HBox([self.free_parameters['k_extended_to_flat_up'],
+                    HBox([self.free_parameters['k_up_contract'],
                           HTML(value="Upward contraction rate")]),
-                    HBox([self.free_parameters['k_flat_to_extended_down'],
+                    HBox([self.free_parameters['k_down_extend'],
                           HTML(value="Downward extension rate")]),
-                    HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
+                    HBox([self.constrained_parameters['k_down_extend_bar'],
                           HTML(value="Effective downward extension rate")]),
-                    HBox([self.free_parameters['k_flat_to_extended_up'],
+                    HBox([self.free_parameters['k_up_extend'],
                           HTML(value="Upward extension rate")]),
-                    HBox([self.constrained_parameters['k_extended_to_flat_down'],
+                    HBox([self.constrained_parameters['k_down_contract'],
                           HTML(value="Downward contraction rate "
                                "(constrained by thermodynamic loop law)")]),
                 ]),
@@ -279,8 +279,8 @@ class SC2RVsRPCL(Experiment):
         # Plot everything
         with self.gui_plot:
             self.gui_plot.clear_output(wait=True)
-            plt.close('SC2RVsDiscSpiral')
-            fig = plt.figure('SC2RVsDiscSpiral', [7.5, 6])
+            plt.close('SC2RVsRPCL')
+            fig = plt.figure('SC2RVsRPCL', [7.5, 6])
             fig.canvas.header_visible = False
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
@@ -393,19 +393,19 @@ class SC2RVsRPCL(Experiment):
                 edgecolor='#DDAA33', transform=handlebox.get_transform())
             sc2r_text = mpl.text.Text(x=x0 + width, y=0, text='SC/2R')
 
-            disc_spiral_circle = mpl.patches.Circle(
+            rpcl_circle = mpl.patches.Circle(
                 (x0 + width + 5*fontsize, height/2), 0.6*fontsize,
                 facecolor='#00448880', edgecolor='#004488',
                 transform=handlebox.get_transform())
-            disc_spiral_text = mpl.text.Text(x=x0 + 1.5*width + 5*fontsize, y=0,
+            rpcl_text = mpl.text.Text(x=x0 + 1.5*width + 5*fontsize, y=0,
                                              text='RPCL')
 
             # Width of full legend handled by this parameter, ugly but it works
             handlebox.width *= 7.8
             handlebox.add_artist(sc2r_circle)
             handlebox.add_artist(sc2r_text)
-            handlebox.add_artist(disc_spiral_circle)
-            handlebox.add_artist(disc_spiral_text)
+            handlebox.add_artist(rpcl_circle)
+            handlebox.add_artist(rpcl_text)
 
     class SigmasHandler:
         """Legend 2nd row handler."""
@@ -435,7 +435,7 @@ class SC2RVsRPCL(Experiment):
                 [x0, x0 + width], [height, height], linestyle='--', color='#DDAA33', alpha=0.5)
             middle_empirical_line = mpl.lines.Line2D(  # Average velocity
                 [x0, x0 + width], [height/2, height/2], color='#BBBBBB')
-            lower_empirical_line = mpl.lines.Line2D(  # Disc-Spiral std
+            lower_empirical_line = mpl.lines.Line2D(  # RPCL std
                 [x0, x0 + width], [0, 0], linestyle='--', color='#00448880', alpha=0.5)
             empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
                                            text='(Emp.):')
@@ -467,11 +467,11 @@ class SC2RVsRPCL(Experiment):
             sc2r_3 = mpl.lines.Line2D(
                 [width/3, width], [height, height], color='#DDAA33')
 
-            disc_spiral_1 = mpl.lines.Line2D(
+            rpcl_1 = mpl.lines.Line2D(
                 [0, 2*width/3], [0, 0], color='#004488')
-            disc_spiral_2 = mpl.lines.Line2D(
+            rpcl_2 = mpl.lines.Line2D(
                 [2*width/3, 2*width/3], [0, 2*height/3], color='#004488')
-            disc_spiral_3 = mpl.lines.Line2D(
+            rpcl_3 = mpl.lines.Line2D(
                 [2*width/3, width], [2*height/3, 2*height/3], color='#004488')
 
             text = mpl.text.Text(x=1.5*width + 0*fontsize,
@@ -480,9 +480,9 @@ class SC2RVsRPCL(Experiment):
             handlebox.add_artist(sc2r_1)
             handlebox.add_artist(sc2r_2)
             handlebox.add_artist(sc2r_3)
-            handlebox.add_artist(disc_spiral_1)
-            handlebox.add_artist(disc_spiral_2)
-            handlebox.add_artist(disc_spiral_3)
+            handlebox.add_artist(rpcl_1)
+            handlebox.add_artist(rpcl_2)
+            handlebox.add_artist(rpcl_3)
             handlebox.add_artist(text)
 
     class ATPHandler:
@@ -526,7 +526,7 @@ class SC2RVsRPCL(Experiment):
 class VelocityVsATPADPRatio(Experiment):
     """Velocity vs [ATP]/[ADP] experiment.
 
-    Plot the average velocity of the two SC2R and Disc-Spiral models for various
+    Plot the average velocity of the two SC2R and RPCL models for various
     values of [ATP]/[ADP] ratio.
     """
 
@@ -553,9 +553,9 @@ class VelocityVsATPADPRatio(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -563,8 +563,8 @@ class VelocityVsATPADPRatio(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
+            'k_down_contract': HTML(description="k_⮩:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -599,21 +599,21 @@ class VelocityVsATPADPRatio(Experiment):
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
-            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+            HTML(value="<b>RPCL Model Physical Parameters</b>"),
             HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
             HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self.free_parameters['k_extended_to_flat_up'],
-                  HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_down'],
-                  HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
-                  HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_up'],
-                  HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self.constrained_parameters['k_extended_to_flat_down'],
-                  HTML(value="Spiral->disc down rate "
+            HBox([self.free_parameters['k_up_contract'],
+                  HTML(value="Upward contraction rate")]),
+            HBox([self.free_parameters['k_down_extend'],
+                  HTML(value="Downward extension rate")]),
+            HBox([self.constrained_parameters['k_down_extend_bar'],
+                  HTML(value="Effective downward extension rate")]),
+            HBox([self.free_parameters['k_up_extend'],
+                  HTML(value="Upward extension rate")]),
+            HBox([self.constrained_parameters['k_down_contract'],
+                  HTML(value="Downward contraction rate "
                        "(constrained by detailed balance)")]),
         ])
 
@@ -743,9 +743,9 @@ class VelocityVsPotential(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -753,8 +753,8 @@ class VelocityVsPotential(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
+            'k_down_contract': HTML(description="k_⮩:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -791,21 +791,21 @@ class VelocityVsPotential(Experiment):
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
-            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+            HTML(value="<b>RPCL Model Physical Parameters</b>"),
             HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
             HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self.free_parameters['k_extended_to_flat_up'],
-                  HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_down'],
-                  HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
-                  HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_up'],
-                  HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self.constrained_parameters['k_extended_to_flat_down'],
-                  HTML(value="Spiral->disc down rate "
+            HBox([self.free_parameters['k_up_contract'],
+                  HTML(value="Upward contraction rate")]),
+            HBox([self.free_parameters['k_down_extend'],
+                  HTML(value="Downward extension rate")]),
+            HBox([self.constrained_parameters['k_down_extend_bar'],
+                  HTML(value="Effective downward extension rate")]),
+            HBox([self.free_parameters['k_up_extend'],
+                  HTML(value="Upward extension rate")]),
+            HBox([self.constrained_parameters['k_down_contract'],
+                  HTML(value="Downward contraction rate "
                        "(constrained by detailed balance)")]),
         ])
 
@@ -876,32 +876,32 @@ class VelocityVsPotential(Experiment):
                        linestyle=(2, (4, 1)), zorder=0)
 
             step_size = (self.rpcl.n_protomers - 1) * 2
-            disc_spiral_plot = ax.plot(unit_potentials,
+            rpcl_plot = ax.plot(unit_potentials,
                                        velocities[self.rpcl],
                                        label=r"RPCL ($\Delta x = " +
                                        str(step_size) + "$ res.)",
                                        color='#004488')
-            disc_spiral_saturation_minus = (
+            rpcl_saturation_minus = (
                 step_size
-                * self.rpcl.k_h_bar * self.rpcl.k_DT * self.rpcl.k_extended_to_flat_up
-                / (self.rpcl.k_DT * self.rpcl.k_extended_to_flat_up
-                   + self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
+                * self.rpcl.k_h_bar * self.rpcl.k_DT * self.rpcl.k_up_contract
+                / (self.rpcl.k_DT * self.rpcl.k_up_contract
+                   + self.rpcl.k_TD * self.rpcl.k_down_extend_bar
                    + self.rpcl.k_h_bar * self.rpcl.k_TD
-                   + self.rpcl.k_h_bar * self.rpcl.k_extended_to_flat_up
-                   + self.rpcl.k_DT * self.rpcl.k_flat_to_extended_down_bar
+                   + self.rpcl.k_h_bar * self.rpcl.k_up_contract
+                   + self.rpcl.k_DT * self.rpcl.k_down_extend_bar
                    + self.rpcl.k_h_bar * self.rpcl.k_DT))
-            disc_spiral_saturation_plus = (
+            rpcl_saturation_plus = (
                 -step_size
-                * self.rpcl.k_s * self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
-                / (self.rpcl.k_s * self.rpcl.k_extended_to_flat_up
+                * self.rpcl.k_s * self.rpcl.k_TD * self.rpcl.k_down_extend_bar
+                / (self.rpcl.k_s * self.rpcl.k_up_contract
                    + self.rpcl.k_s * self.rpcl.k_TD
                    + self.rpcl.k_h_bar * self.rpcl.k_TD
-                   + self.rpcl.k_h_bar * self.rpcl.k_extended_to_flat_up
-                   + self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
-                   + self.rpcl.k_s * self.rpcl.k_flat_to_extended_down_bar))
-            ax.axhline(disc_spiral_saturation_minus, color='#004488',
+                   + self.rpcl.k_h_bar * self.rpcl.k_up_contract
+                   + self.rpcl.k_TD * self.rpcl.k_down_extend_bar
+                   + self.rpcl.k_s * self.rpcl.k_down_extend_bar))
+            ax.axhline(rpcl_saturation_minus, color='#004488',
                        linestyle='--', zorder=0, label="saturation")
-            ax.axhline(disc_spiral_saturation_plus,
+            ax.axhline(rpcl_saturation_plus,
                        color='#004488', linestyle='--', zorder=0)
 
             ax.set_xlabel(r"$u/T$")
@@ -918,7 +918,7 @@ class DefectlessVsDefective(Experiment):
     """Defectless vs defective comparison.
 
     Plot trajectories, average position and std (analytical and/or emprirical)
-    for all models (SC/2R and Disc-Spiral, and defectless and defective).
+    for all models (SC/2R and RPCL, and defectless and defective).
     """
 
     def __init__(self, savefig: bool = False):
@@ -952,9 +952,9 @@ class DefectlessVsDefective(Experiment):
             'k_h': _DefaultFloatLogSlider(description="k_h:"),
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -962,8 +962,8 @@ class DefectlessVsDefective(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
+            'k_down_contract': HTML(description="k_⮩:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -971,7 +971,7 @@ class DefectlessVsDefective(Experiment):
         gui_parameters = HBox([
             VBox([
                 HTML(
-                    value="<h1>SC/2R and Disc-Spiral ATP consumption rate comparison</h1>"),
+                    value="<h1>SC/2R and RPCL ATP consumption rate comparison</h1>"),
 
                 HBox([self.free_parameters['defect_factor'],
                       HTML(value="Hydrolysis defect factor")]),
@@ -1011,19 +1011,19 @@ class DefectlessVsDefective(Experiment):
                       HTML(value="Translocation down rate "
                            "(constrained by detailed balance)")]),
 
-                HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
+                HTML(value="<b>RPCL Model Physical Parameters</b>"),
                 HBox([self.constrained_parameters['k_h_bar'],
                       HTML(value="Effective ATP hydrolysis rate")]),
-                HBox([self.free_parameters['k_extended_to_flat_up'],
-                      HTML(value="Spiral->disc up translocation rate")]),
-                HBox([self.free_parameters['k_flat_to_extended_down'],
-                      HTML(value="Disc->spiral down translocation rate")]),
-                HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
-                      HTML(value="Effective disc->spiral down translocation rate")]),
-                HBox([self.free_parameters['k_flat_to_extended_up'],
-                      HTML(value="Disc->spiral up translocation rate")]),
-                HBox([self.constrained_parameters['k_extended_to_flat_down'],
-                      HTML(value="Spiral->disc down rate "
+                HBox([self.free_parameters['k_up_contract'],
+                      HTML(value="Upward contraction rate")]),
+                HBox([self.free_parameters['k_down_extend'],
+                      HTML(value="Downward extension rate")]),
+                HBox([self.constrained_parameters['k_down_extend_bar'],
+                      HTML(value="Effective downward extension rate")]),
+                HBox([self.free_parameters['k_up_extend'],
+                      HTML(value="Upward extension rate")]),
+                HBox([self.constrained_parameters['k_down_contract'],
+                      HTML(value="Downward contraction rate "
                            "(constrained by detailed balance)")]),
             ])
         ])
@@ -1086,11 +1086,9 @@ class DefectlessVsDefective(Experiment):
             fig.canvas.footer_visible = False
             fig.canvas.toolbar_visible = False
             ax_sc2r_traj = fig.add_subplot(121)
-            ax_disc_spiral_traj = fig.add_subplot(122)
-            # ax_sc2r_hist = fig.add_subplot(223)
-            # ax_disc_spiral_hist = fig.add_subplot(224)
+            ax_rpcl_traj = fig.add_subplot(122)
             ax_sc2r_hist = ax_sc2r_traj.inset_axes([0.6, 0.1, 0.35, 0.2])
-            ax_disc_spiral_hist = ax_disc_spiral_traj.inset_axes(
+            ax_rpcl_hist = ax_rpcl_traj.inset_axes(
                 [0.55, 0.1, 0.4, 0.2])
 
             yellow = '#DDAA33'
@@ -1103,9 +1101,9 @@ class DefectlessVsDefective(Experiment):
                              [self.rpcl, self.defective_rpcl]]
             nested_colors = [[yellow, red], [blue, red]]
             nested_axes = [[ax_sc2r_traj, ax_sc2r_hist],
-                           [ax_disc_spiral_traj, ax_disc_spiral_hist]]
+                           [ax_rpcl_traj, ax_rpcl_hist]]
             names = ['SC/2R', 'RPCL']
-            # First SC2R, then Disc-Spiral
+            # First SC2R, then RPCL
             for models, colors, axes, name in zip(
                     nested_models, nested_colors, nested_axes, names):
                 ax_traj = axes[0]
@@ -1390,12 +1388,12 @@ class NonIdeal(Experiment):
                          if state != 'out'],
                 value='TTT', continuous_update=False,
                 description="SC/2R reference state:"),
-            'disc_spiral_reference_state': Dropdown(
+            'rpcl_reference_state': Dropdown(
                 options=[state for state
                          in self.non_ideal_rpcl.kinetic_scheme.nodes
                          if state != 'out'],
-                value='flat-ATP', continuous_update=False,
-                description="Disc-Spiral reference state:"),
+                value='contracted-ATP', continuous_update=False,
+                description="RPCL reference state:"),
             # Source for ATP/ADP ratio:
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'atp_adp_ratio': _DefaultFloatLogSlider(
@@ -1412,9 +1410,9 @@ class NonIdeal(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_extended_to_flat_up': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_flat_to_extended_down': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -1422,8 +1420,8 @@ class NonIdeal(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_flat_to_extended_down_bar': HTML(description="ꝁ_⮯:"),
-            'k_extended_to_flat_down': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
+            'k_down_contract': HTML(description="k_⮩:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -1464,23 +1462,23 @@ class NonIdeal(Experiment):
                   HTML(value="Translocation down rate "
                        "(constrained by detailed balance)")]),
 
-            HTML(value="<b>Disc-Spiral Model Physical Parameters</b>"),
-            HBox([self.free_parameters['disc_spiral_reference_state'],
-                  HTML(value="Disc-Spiral out-of-main-loop reference state")]),
+            HTML(value="<b>RPCL Model Physical Parameters</b>"),
+            HBox([self.free_parameters['rpcl_reference_state'],
+                  HTML(value="RPCL out-of-main-loop reference state")]),
             HBox([self.free_parameters['n_protomers'],
                   HTML(value="Number of protomers")]),
             HBox([self.constrained_parameters['k_h_bar'],
                   HTML(value="Effective ATP hydrolysis rate")]),
-            HBox([self.free_parameters['k_extended_to_flat_up'],
-                  HTML(value="Spiral->disc up translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_down'],
-                  HTML(value="Disc->spiral down translocation rate")]),
-            HBox([self.constrained_parameters['k_flat_to_extended_down_bar'],
-                  HTML(value="Effective disc->spiral down translocation rate")]),
-            HBox([self.free_parameters['k_flat_to_extended_up'],
-                  HTML(value="Disc->spiral up translocation rate")]),
-            HBox([self.constrained_parameters['k_extended_to_flat_down'],
-                  HTML(value="Spiral->disc down rate "
+            HBox([self.free_parameters['k_up_contract'],
+                  HTML(value="Upward contraction rate")]),
+            HBox([self.free_parameters['k_down_extend'],
+                  HTML(value="Downward extension rate")]),
+            HBox([self.constrained_parameters['k_down_extend_bar'],
+                  HTML(value="Effective downward extension rate")]),
+            HBox([self.free_parameters['k_up_extend'],
+                  HTML(value="Upward extension rate")]),
+            HBox([self.constrained_parameters['k_down_contract'],
+                  HTML(value="Downward contraction rate "
                        "(constrained by detailed balance)")]),
         ])
 
@@ -1498,7 +1496,7 @@ class NonIdeal(Experiment):
         self.non_ideal_sc2r.reference_state = \
             self.free_parameters['sc2r_reference_state'].value
         self.non_ideal_rpcl.reference_state = \
-            self.free_parameters['disc_spiral_reference_state'].value
+            self.free_parameters['rpcl_reference_state'].value
 
         # Probability of being in the out state vs k_out range
         min, max = self.free_parameters['k_out_range'].value
@@ -1524,7 +1522,7 @@ class NonIdeal(Experiment):
                                 probabilities[self.non_ideal_sc2r],
                                 label="Non-Ideal SC/2R",
                                 color='#DDAA33')
-            disc_spiral_plot = ax.plot(k_outs,
+            rpcl_plot = ax.plot(k_outs,
                                        probabilities[self.non_ideal_rpcl],
                                        label="Non-Ideal RPCL",
                                        color='#004488')
