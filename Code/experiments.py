@@ -16,9 +16,7 @@ from abc import ABC, abstractmethod
 import copy
 
 
-# TODO Render labels and legends with LaTeX
 # TODO faire un map_to comme matplotlib legend pour maps widget to translcation model parameter (for ex. dict {widget: Class.attribute} ou pas, réfléchis moins de 1min)
-# TODO change self._ to self. everywhere, but think about it a bit before doing so
 class Experiment(ABC):
     """Base class for experiments.
 
@@ -52,17 +50,17 @@ class Experiment(ABC):
 
     def __init__(self, savefig: bool = False):
         self.savefig = savefig
-        self.free_parameters = self._construct_free_parameters()
-        self.constrained_parameters = self._construct_constrained_parameters()
-        self._gui = self._construct_gui()
+        self.free_parameters = self.construct_free_parameters()
+        self.constrained_parameters = self.construct_constrained_parameters()
+        self.gui = self.construct_gui()
 
         for _, widget in self.free_parameters.items():
-            widget.observe(lambda _: self._run(), names='value')
-        self._run()
-        display(self._gui)
+            widget.observe(lambda _: self.run(), names='value')
+        self.run()
+        display(self.gui)
 
     @abstractmethod
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         """Construct free parameters widgets.
 
         Free parameters are parameters that can be changed by the user.
@@ -70,7 +68,7 @@ class Experiment(ABC):
         pass
 
     @abstractmethod
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         """Construct constrained parameters widgets.
 
         Constrained parameters are parameters that are computed from free
@@ -79,16 +77,16 @@ class Experiment(ABC):
         pass
 
     @abstractmethod
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         """Construct GUI."""
         pass
 
     @abstractmethod
-    def _run(self) -> None:
+    def run(self) -> None:
         """Run experiment."""
         pass
 
-    def _update_models_free_parameters(
+    def update_models_free_parameters(
         self,
         models: TranslocationModel | list[TranslocationModel],
         free_parameters: dict[str, Widget]
@@ -101,7 +99,7 @@ class Experiment(ABC):
                 if name in vars(model):
                     setattr(model, name, widget.value)
 
-    def _update_gui_constrained_parameters(
+    def update_gui_constrained_parameters(
         self,
         models: TranslocationModel | list[TranslocationModel],
         constrained_parameters: dict[str, Widget]
@@ -127,11 +125,11 @@ class SC2RVsRPCL(Experiment):
     """
 
     def __init__(self, savefig: bool = False):
-        self._sc2r = SC2R()
-        self._disc_spiral = RPCL()
+        self.sc2r = SC2R()
+        self.rpcl = RPCL()
         super().__init__(savefig=savefig)
 
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         return {
             'max_time': _DefaultFloatLogSlider(
                 value=100, min=1, max=3, readout_format='.2f',
@@ -157,7 +155,7 @@ class SC2RVsRPCL(Experiment):
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
@@ -166,7 +164,7 @@ class SC2RVsRPCL(Experiment):
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
 
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         self.gui_plot = Output()
         self.gui_parameters = VBox([
             HBox([
@@ -230,18 +228,18 @@ class SC2RVsRPCL(Experiment):
 
         return gui
 
-    def _run(self) -> None:
+    def run(self) -> None:
         # Update GUI<->Models
-        models = [self._sc2r, self._disc_spiral]
-        self._update_models_free_parameters(models, self.free_parameters)
-        self._update_gui_constrained_parameters(models,
+        models = [self.sc2r, self.rpcl]
+        self.update_models_free_parameters(models, self.free_parameters)
+        self.update_gui_constrained_parameters(models,
                                                 self.constrained_parameters)
 
         # Normalize average velocity
         for model in models:
             model.normalize_average_velocity(inplace=True)
-        assert np.isclose(self._sc2r.average_velocity(),
-                          self._disc_spiral.average_velocity())
+        assert np.isclose(self.sc2r.average_velocity(),
+                          self.rpcl.average_velocity())
 
         # For both model, we do a few trajectories, compute analytical stats and
         # empirical stats, and then plot everything.
@@ -491,7 +489,7 @@ class SC2RVsRPCL(Experiment):
         """Legend 4th row handler."""
 
         def __init__(self, models: list[TranslocationModel, TranslocationModel]):
-            self._models = models  # [SC2R, Disc-Spiral]
+            self.models = models  # [SC2R, RPCL]
 
         def legend_artist(self, legend, orig_handle, fontsize, handlebox):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
@@ -506,8 +504,8 @@ class SC2RVsRPCL(Experiment):
                 edgecolor='#DDAA33', transform=handlebox.get_transform())
             defectless_text = mpl.text.Text(
                 x=x0 + width, y=0,
-                text=str(round(self._models[0].atp_consumption_rate()
-                               / self._models[0].average_velocity(), 2)) + ";")
+                text=str(round(self.models[0].atp_consumption_rate()
+                               / self.models[0].average_velocity(), 2)) + ";")
 
             x0 += 5*fontsize
             defective_circle = mpl.patches.Circle(
@@ -515,8 +513,8 @@ class SC2RVsRPCL(Experiment):
                 edgecolor='#004488', transform=handlebox.get_transform())
             defective_text = mpl.text.Text(
                 x=x0 + width, y=0,
-                text=str(round(self._models[1].atp_consumption_rate()
-                               / self._models[1].average_velocity(), 2)))
+                text=str(round(self.models[1].atp_consumption_rate()
+                               / self.models[1].average_velocity(), 2)))
 
             handlebox.add_artist(r_atp)
             handlebox.add_artist(defectless_circle)
@@ -533,11 +531,11 @@ class VelocityVsATPADPRatio(Experiment):
     """
 
     def __init__(self, savefig: bool = False):
-        self._sc2r = SC2R()
-        self._disc_spiral = RPCL()
+        self.sc2r = SC2R()
+        self.rpcl = RPCL()
         super().__init__(savefig=savefig)
 
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         return {
             # Source for ATP/ADP ratio:
             # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
@@ -560,7 +558,7 @@ class VelocityVsATPADPRatio(Experiment):
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
@@ -569,7 +567,7 @@ class VelocityVsATPADPRatio(Experiment):
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
 
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         gui_plot = Output()
         gui_parameters = VBox([
             HTML(value="<h1>Velocity vs [ATP]/[ADP]</h1>"),
@@ -624,10 +622,10 @@ class VelocityVsATPADPRatio(Experiment):
 
         return gui
 
-    def _run(self) -> None:
-        models = [self._sc2r, self._disc_spiral]
-        self._update_models_free_parameters(models, self.free_parameters)
-        self._update_gui_constrained_parameters(models,
+    def run(self) -> None:
+        models = [self.sc2r, self.rpcl]
+        self.update_models_free_parameters(models, self.free_parameters)
+        self.update_gui_constrained_parameters(models,
                                                 self.constrained_parameters)
         # Update k_TD for current range of ATP/ADP ratios
         def k_TD_range(k_DT, K_d_atp, K_d_adp, atp_adp_ratio_min,
@@ -656,7 +654,7 @@ class VelocityVsATPADPRatio(Experiment):
                 model.atp_adp_ratio = atp_adp_ratio
                 velocities[model].append(model.average_velocity())
 
-        gui_plot = self._gui.children[0]
+        gui_plot = self.gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('VelocityVsATPADPRatio')
@@ -667,12 +665,12 @@ class VelocityVsATPADPRatio(Experiment):
             ax = fig.add_subplot(111)
 
             # Plot velocities vs [ATP]/[ADP]
-            ax.plot(atp_adp_ratios / self._sc2r.equilibrium_atp_adp_ratio,
-                    velocities[self._sc2r],
+            ax.plot(atp_adp_ratios / self.sc2r.equilibrium_atp_adp_ratio,
+                    velocities[self.sc2r],
                     label='SC/2R',
                     color='#DDAA33')
-            ax.plot(atp_adp_ratios / self._disc_spiral.equilibrium_atp_adp_ratio,
-                    velocities[self._disc_spiral],
+            ax.plot(atp_adp_ratios / self.rpcl.equilibrium_atp_adp_ratio,
+                    velocities[self.rpcl],
                     label='RPCL',
                     color='#004488')
             ax.set_xscale('log')
@@ -715,14 +713,14 @@ class VelocityVsPotential(Experiment):
     # https://fr.wikipedia.org/wiki/%C3%89quation_d%27Eyring
     # https://fr.wikipedia.org/wiki/Loi_d%27Arrhenius
     def __init__(self, savefig: bool = False):
-        self._sc2r = SC2R()
-        self._disc_spiral = RPCL()
+        self.sc2r = SC2R()
+        self.rpcl = RPCL()
         # Copy used for accessing rates before applying the Boltzmann factor due to potential
-        self._sc2r_copy = copy.deepcopy(self._sc2r)
-        self._disc_spiral_copy = copy.deepcopy(self._disc_spiral)
+        self.sc2r_copy = copy.deepcopy(self.sc2r)
+        self.rpcl_copy = copy.deepcopy(self.rpcl)
         super().__init__(savefig=savefig)
 
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         return {
             # ΔU/T potential for a unit displacement (i.e. multiply with
             # displacement size to have true potential difference)
@@ -750,7 +748,7 @@ class VelocityVsPotential(Experiment):
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
@@ -759,7 +757,7 @@ class VelocityVsPotential(Experiment):
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
 
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         gui_plot = Output()
         gui_parameters = VBox([
             HTML(value="<h1>Velocity vs Potential</h1>"),
@@ -816,15 +814,15 @@ class VelocityVsPotential(Experiment):
 
         return gui
 
-    def _run(self) -> None:
-        models = [self._sc2r, self._disc_spiral]
+    def run(self) -> None:
+        models = [self.sc2r, self.rpcl]
         # Update models<->GUI
-        self._update_models_free_parameters(models, self.free_parameters)
-        self._update_gui_constrained_parameters(models,
+        self.update_models_free_parameters(models, self.free_parameters)
+        self.update_gui_constrained_parameters(models,
                                                 self.constrained_parameters)
 
         # Add potentials in range
-        models_copy = [self._sc2r_copy, self._disc_spiral_copy]
+        models_copy = [self.sc2r_copy, self.rpcl_copy]
         min, max = self.free_parameters['unit_potential'].value
         unit_potentials = np.linspace(min, max, 100)
         velocities = {model: [] for model in models}
@@ -851,7 +849,7 @@ class VelocityVsPotential(Experiment):
                     # functions rather than values).
                 velocities[model].append(model.average_velocity())
 
-        gui_plot = self._gui.children[0]
+        gui_plot = self.gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('VelocityVsPotential')
@@ -863,44 +861,44 @@ class VelocityVsPotential(Experiment):
 
             # Plot velocities vs [ATP]/[ADP]
             sc2r_plot = ax.plot(unit_potentials,
-                                velocities[self._sc2r],
+                                velocities[self.sc2r],
                                 label=r"SC/2R ($\Delta x = 2$ res.)",
                                 color='#DDAA33')
             sc2r_saturation_minus = (
-                2 * self._sc2r.k_h * self._sc2r.k_DT
-                / (self._sc2r.k_h + self._sc2r.k_DT + self._sc2r.k_TD))
+                2 * self.sc2r.k_h * self.sc2r.k_DT
+                / (self.sc2r.k_h + self.sc2r.k_DT + self.sc2r.k_TD))
             sc2r_saturation_plus = (
-                -2 * self._sc2r.k_s * self._sc2r.k_TD
-                / (self._sc2r.k_s + self._sc2r.k_TD + self._sc2r.k_h))
+                -2 * self.sc2r.k_s * self.sc2r.k_TD
+                / (self.sc2r.k_s + self.sc2r.k_TD + self.sc2r.k_h))
             ax.axhline(sc2r_saturation_minus, color='#DDAA33',
                        linestyle='--', zorder=0, label="saturation")
             ax.axhline(sc2r_saturation_plus, color='#DDAA33',
                        linestyle=(2, (4, 1)), zorder=0)
 
-            step_size = (self._disc_spiral.n_protomers - 1) * 2
+            step_size = (self.rpcl.n_protomers - 1) * 2
             disc_spiral_plot = ax.plot(unit_potentials,
-                                       velocities[self._disc_spiral],
+                                       velocities[self.rpcl],
                                        label=r"RPCL ($\Delta x = " +
                                        str(step_size) + "$ res.)",
                                        color='#004488')
             disc_spiral_saturation_minus = (
                 step_size
-                * self._disc_spiral.k_h_bar * self._disc_spiral.k_DT * self._disc_spiral.k_extended_to_flat_up
-                / (self._disc_spiral.k_DT * self._disc_spiral.k_extended_to_flat_up
-                   + self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
-                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_TD
-                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_extended_to_flat_up
-                   + self._disc_spiral.k_DT * self._disc_spiral.k_flat_to_extended_down_bar
-                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_DT))
+                * self.rpcl.k_h_bar * self.rpcl.k_DT * self.rpcl.k_extended_to_flat_up
+                / (self.rpcl.k_DT * self.rpcl.k_extended_to_flat_up
+                   + self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
+                   + self.rpcl.k_h_bar * self.rpcl.k_TD
+                   + self.rpcl.k_h_bar * self.rpcl.k_extended_to_flat_up
+                   + self.rpcl.k_DT * self.rpcl.k_flat_to_extended_down_bar
+                   + self.rpcl.k_h_bar * self.rpcl.k_DT))
             disc_spiral_saturation_plus = (
                 -step_size
-                * self._disc_spiral.k_s * self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
-                / (self._disc_spiral.k_s * self._disc_spiral.k_extended_to_flat_up
-                   + self._disc_spiral.k_s * self._disc_spiral.k_TD
-                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_TD
-                   + self._disc_spiral.k_h_bar * self._disc_spiral.k_extended_to_flat_up
-                   + self._disc_spiral.k_TD * self._disc_spiral.k_flat_to_extended_down_bar
-                   + self._disc_spiral.k_s * self._disc_spiral.k_flat_to_extended_down_bar))
+                * self.rpcl.k_s * self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
+                / (self.rpcl.k_s * self.rpcl.k_extended_to_flat_up
+                   + self.rpcl.k_s * self.rpcl.k_TD
+                   + self.rpcl.k_h_bar * self.rpcl.k_TD
+                   + self.rpcl.k_h_bar * self.rpcl.k_extended_to_flat_up
+                   + self.rpcl.k_TD * self.rpcl.k_flat_to_extended_down_bar
+                   + self.rpcl.k_s * self.rpcl.k_flat_to_extended_down_bar))
             ax.axhline(disc_spiral_saturation_minus, color='#004488',
                        linestyle='--', zorder=0, label="saturation")
             ax.axhline(disc_spiral_saturation_plus,
@@ -924,13 +922,13 @@ class DefectlessVsDefective(Experiment):
     """
 
     def __init__(self, savefig: bool = False):
-        self._sc2r = SC2R()
-        self._defective_sc2r = DefectiveSC2R()
-        self._disc_spiral = RPCL()
-        self._defective_disc_spiral = DefectiveRPCL()
+        self.sc2r = SC2R()
+        self.defective_sc2r = DefectiveSC2R()
+        self.rpcl = RPCL()
+        self.defective_rpcl = DefectiveRPCL()
         super().__init__(savefig=savefig)
 
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         return {
             'defect_factor': _DefaultFloatLogSlider(
                 value=0.1, min=-3, max=0, readout_format='.3f',
@@ -959,7 +957,7 @@ class DefectlessVsDefective(Experiment):
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
@@ -968,7 +966,7 @@ class DefectlessVsDefective(Experiment):
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
 
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         gui_plot = Output()
         gui_parameters = HBox([
             VBox([
@@ -1035,12 +1033,12 @@ class DefectlessVsDefective(Experiment):
 
         return gui
 
-    def _run(self) -> None:
+    def run(self) -> None:
         # Update GUI<->Models
-        models = [self._sc2r, self._defective_sc2r,
-                  self._disc_spiral, self._defective_disc_spiral]
-        self._update_models_free_parameters(models, self.free_parameters)
-        self._update_gui_constrained_parameters(models,
+        models = [self.sc2r, self.defective_sc2r,
+                  self.rpcl, self.defective_rpcl]
+        self.update_models_free_parameters(models, self.free_parameters)
+        self.update_gui_constrained_parameters(models,
                                                 self.constrained_parameters)
 
         # For each model, we do a few trajectories, compute analytical stats and
@@ -1079,7 +1077,7 @@ class DefectlessVsDefective(Experiment):
                         'position', times=times, n_simulations=n_simulations)
 
         # Plot everything
-        gui_plot = self._gui.children[0]
+        gui_plot = self.gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('DefectlessVsDefective')
@@ -1101,8 +1099,8 @@ class DefectlessVsDefective(Experiment):
             alpha_0_2 = '33'
             alpha_0_5 = '80'
             hidden = '#00000000'
-            nested_models = [[self._sc2r, self._defective_sc2r],
-                             [self._disc_spiral, self._defective_disc_spiral]]
+            nested_models = [[self.sc2r, self.defective_sc2r],
+                             [self.rpcl, self.defective_rpcl]]
             nested_colors = [[yellow, red], [blue, red]]
             nested_axes = [[ax_sc2r_traj, ax_sc2r_hist],
                            [ax_disc_spiral_traj, ax_disc_spiral_hist]]
@@ -1206,9 +1204,9 @@ class DefectlessVsDefective(Experiment):
         """Legend 1st row handler."""
 
         def __init__(self, colors: list[str, str], velocities: list[float, float]):
-            self._colors = colors  # [Defectless, Defective] colors
+            self.colors = colors  # [Defectless, Defective] colors
             # [Defectless, Defective] average velocities
-            self._velocities = velocities
+            self.velocities = velocities
 
         def legend_artist(self, legend, orig_handle, fontsize, handlebox):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
@@ -1217,7 +1215,7 @@ class DefectlessVsDefective(Experiment):
             x0 = width/3
             defectless_circle = mpl.patches.Circle(
                 (x0 + width/2, height/2), 0.6*fontsize,
-                facecolor=self._colors[0] + '80', edgecolor=self._colors[0],
+                facecolor=self.colors[0] + '80', edgecolor=self.colors[0],
                 transform=handlebox.get_transform())
             defectless_text = mpl.text.Text(
                 x=x0 + width, y=0, text="Defectless")
@@ -1225,7 +1223,7 @@ class DefectlessVsDefective(Experiment):
             x0 += width + 6*fontsize
             defective_circle = mpl.patches.Circle(
                 (x0 + width/2, height/2), 0.6*fontsize,
-                facecolor=self._colors[1] + '80', edgecolor=self._colors[1],
+                facecolor=self.colors[1] + '80', edgecolor=self.colors[1],
                 transform=handlebox.get_transform())
             deffective_text = mpl.text.Text(
                 x=x0 + width, y=0, text='Defective')
@@ -1241,7 +1239,7 @@ class DefectlessVsDefective(Experiment):
         """Legend 2nd row handler."""
 
         def __init__(self, colors: list[str, str]):
-            self._colors = colors  # List[Defectless, Defective] colors
+            self.colors = colors  # List[Defectless, Defective] colors
 
         def legend_artist(self, legend, orig_handle, fontsize, handlebox):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
@@ -1252,18 +1250,18 @@ class DefectlessVsDefective(Experiment):
                 [[0, 0], [0, height], [width, height]])
             defectless_triangle = mpl.patches.Polygon(
                 defectless_triangle_xy, closed=True,
-                facecolor=self._colors[0]+'80', edgecolor='#00000000',
+                facecolor=self.colors[0]+'80', edgecolor='#00000000',
                 transform=handlebox.get_transform())
             defective_triangle_xy = np.array(
                 [[0, 0], [width, height], [width, 0]])
             defective_triangle = mpl.patches.Polygon(
                 defective_triangle_xy, closed=True,
-                facecolor=self._colors[1]+'80', edgecolor='#00000000',
+                facecolor=self.colors[1]+'80', edgecolor='#00000000',
                 transform=handlebox.get_transform())
             defectless_analytical_line = mpl.lines.Line2D(
-                [0, width/2], [0, height/2], color=self._colors[0], alpha=0.5)
+                [0, width/2], [0, height/2], color=self.colors[0], alpha=0.5)
             defective_analytical_line = mpl.lines.Line2D(
-                [width/2, width], [height/2, height], color=self._colors[1],
+                [width/2, width], [height/2, height], color=self.colors[1],
                 alpha=0.5)
             analytical_text = mpl.text.Text(x=width + 0.5*fontsize, y=0,
                                             text='(Ana.);')
@@ -1272,16 +1270,16 @@ class DefectlessVsDefective(Experiment):
             x0 = width + 4.5*fontsize
             defectless_std_line = mpl.lines.Line2D(
                 [x0, x0 + width], [height, height], linestyle='--',
-                color=self._colors[0], alpha=0.5)
+                color=self.colors[0], alpha=0.5)
             defectless_mean_line = mpl.lines.Line2D(
-                [x0, x0 + width], [height/2, height/2], color=self._colors[0],
+                [x0, x0 + width], [height/2, height/2], color=self.colors[0],
                 alpha=0.5)
             defective_std_line = mpl.lines.Line2D(
                 [x0, x0 + width], [0, 0], linestyle='--',
-                color=self._colors[1], alpha=0.5)
+                color=self.colors[1], alpha=0.5)
             defective_mean_line = mpl.lines.Line2D(
                 [x0 + width/2, x0 + width], [height/2, height/2],
-                color=self._colors[1], alpha=0.5)
+                color=self.colors[1], alpha=0.5)
             empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
                                            text='(Emp.):')
 
@@ -1304,26 +1302,26 @@ class DefectlessVsDefective(Experiment):
         """Legend 3rd row handler."""
 
         def __init__(self, colors: list[str, str]):
-            self._colors = colors  # List[Defectless, Defective] colors
+            self.colors = colors  # List[Defectless, Defective] colors
 
         def legend_artist(self, legend, orig_handle, fontsize, handlebox):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
             width, height = handlebox.width, handlebox.height
 
             defectless_1 = mpl.lines.Line2D(
-                [0, width/3], [height/3, height/3], color=self._colors[0])
+                [0, width/3], [height/3, height/3], color=self.colors[0])
             defectless_2 = mpl.lines.Line2D(
-                [width/3, width/3], [height/3, height], color=self._colors[0])
+                [width/3, width/3], [height/3, height], color=self.colors[0])
             defectless_3 = mpl.lines.Line2D(
-                [width/3, width], [height, height], color=self._colors[0])
+                [width/3, width], [height, height], color=self.colors[0])
 
             defective_1 = mpl.lines.Line2D(
-                [0, 2*width/3], [0, 0], color=self._colors[1])
+                [0, 2*width/3], [0, 0], color=self.colors[1])
             defective_2 = mpl.lines.Line2D(
-                [2*width/3, 2*width/3], [0, 2*height/3], color=self._colors[1])
+                [2*width/3, 2*width/3], [0, 2*height/3], color=self.colors[1])
             defective_3 = mpl.lines.Line2D(
                 [2*width/3, width], [2*height/3, 2*height/3],
-                color=self._colors[1])
+                color=self.colors[1])
 
             text = mpl.text.Text(x=1.5*width + 0*fontsize,
                                  y=0, text='Some sample trajectories')
@@ -1340,9 +1338,9 @@ class DefectlessVsDefective(Experiment):
         """Legend 4th row handler."""
 
         def __init__(self, colors: list[str, str], velocities: list[float, float]):
-            self._colors = colors  # List[Defectless, Defective] colors
+            self.colors = colors  # List[Defectless, Defective] colors
             # List[Defectless, Defective] velocities
-            self._velocities = velocities
+            self.velocities = velocities
 
         def legend_artist(self, legend, orig_handle, fontsize, handlebox):
             x0, y0 = handlebox.xdescent, handlebox.ydescent
@@ -1352,19 +1350,19 @@ class DefectlessVsDefective(Experiment):
 
             x0 += 4*fontsize
             defectless_line = mpl.lines.Line2D(
-                [x0, x0 + 0.6*width], [height/2, height/2], color=self._colors[0],
+                [x0, x0 + 0.6*width], [height/2, height/2], color=self.colors[0],
                 alpha=0.5)
             defectless_text = mpl.text.Text(
                 x=x0 + 0.8*width, y=0,
-                text=str(round(self._velocities[0], 2)) + ";")
+                text=str(round(self.velocities[0], 2)) + ";")
 
             x0 += width + 4*fontsize
             defective_line = mpl.lines.Line2D(
-                [x0, x0 + 0.6*width], [height/2, height/2], color=self._colors[1],
+                [x0, x0 + 0.6*width], [height/2, height/2], color=self.colors[1],
                 alpha=0.5)
             defective_text = mpl.text.Text(
                 x=x0 + 0.8*width, y=0,
-                text=str(round(self._velocities[1], 2)))
+                text=str(round(self.velocities[1], 2)))
 
             handlebox.add_artist(v)
             handlebox.add_artist(defectless_line)
@@ -1376,11 +1374,11 @@ class DefectlessVsDefective(Experiment):
 # TODO show k_out for each state
 class NonIdeal(Experiment):
     def __init__(self, savefig: bool = False):
-        self._non_ideal_sc2r = NonIdealSC2R()
-        self._non_ideal_disc_spiral = NonIdealRPCL()
+        self.non_ideal_sc2r = NonIdealSC2R()
+        self.non_ideal_rpcl = NonIdealRPCL()
         super().__init__(savefig=savefig)
 
-    def _construct_free_parameters(self) -> dict[str, Widget]:
+    def construct_free_parameters(self) -> dict[str, Widget]:
         return {
             'k_out_range': IntRangeSlider(
                 value=[-3, 2], min=-3, max=2, continuous_update=False,
@@ -1388,13 +1386,13 @@ class NonIdeal(Experiment):
             'k_in': _DefaultFloatLogSlider(description="k_in:"),
             'sc2r_reference_state': Dropdown(
                 options=[state for state
-                         in self._non_ideal_sc2r.kinetic_scheme.nodes
+                         in self.non_ideal_sc2r.kinetic_scheme.nodes
                          if state != 'out'],
                 value='TTT', continuous_update=False,
                 description="SC/2R reference state:"),
             'disc_spiral_reference_state': Dropdown(
                 options=[state for state
-                         in self._non_ideal_disc_spiral.kinetic_scheme.nodes
+                         in self.non_ideal_rpcl.kinetic_scheme.nodes
                          if state != 'out'],
                 value='flat-ATP', continuous_update=False,
                 description="Disc-Spiral reference state:"),
@@ -1419,7 +1417,7 @@ class NonIdeal(Experiment):
             'k_flat_to_extended_up': _DefaultFloatLogSlider(description="k_⮭:"),
         }
 
-    def _construct_constrained_parameters(self) -> dict[str, Widget]:
+    def construct_constrained_parameters(self) -> dict[str, Widget]:
         return {
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
@@ -1428,7 +1426,7 @@ class NonIdeal(Experiment):
             'k_extended_to_flat_down': HTML(description="k_⮩:"),
         }
 
-    def _construct_gui(self) -> Widget:
+    def construct_gui(self) -> Widget:
         gui_plot = Output()
         gui_parameters = VBox([
             HTML(value="<h1>Non-Ideal Models</h1>"),
@@ -1491,15 +1489,15 @@ class NonIdeal(Experiment):
 
         return gui
 
-    def _run(self) -> None:
-        models = [self._non_ideal_sc2r, self._non_ideal_disc_spiral]
+    def run(self) -> None:
+        models = [self.non_ideal_sc2r, self.non_ideal_rpcl]
         # Update models<->GUI
-        self._update_models_free_parameters(models, self.free_parameters)
-        self._update_gui_constrained_parameters(models,
+        self.update_models_free_parameters(models, self.free_parameters)
+        self.update_gui_constrained_parameters(models,
                                                 self.constrained_parameters)
-        self._non_ideal_sc2r.reference_state = \
+        self.non_ideal_sc2r.reference_state = \
             self.free_parameters['sc2r_reference_state'].value
-        self._non_ideal_disc_spiral.reference_state = \
+        self.non_ideal_rpcl.reference_state = \
             self.free_parameters['disc_spiral_reference_state'].value
 
         # Probability of being in the out state vs k_out range
@@ -1512,7 +1510,7 @@ class NonIdeal(Experiment):
                 probabilities[model].append(
                     1-model._compute_probabilities()['out'])
 
-        gui_plot = self._gui.children[0]
+        gui_plot = self.gui.children[0]
         with gui_plot:
             gui_plot.clear_output(wait=True)
             plt.close('NonIdeal')
@@ -1523,11 +1521,11 @@ class NonIdeal(Experiment):
             ax = fig.add_subplot(111)
 
             sc2r_plot = ax.plot(k_outs,
-                                probabilities[self._non_ideal_sc2r],
+                                probabilities[self.non_ideal_sc2r],
                                 label="Non-Ideal SC/2R",
                                 color='#DDAA33')
             disc_spiral_plot = ax.plot(k_outs,
-                                       probabilities[self._non_ideal_disc_spiral],
+                                       probabilities[self.non_ideal_rpcl],
                                        label="Non-Ideal RPCL",
                                        color='#004488')
 
