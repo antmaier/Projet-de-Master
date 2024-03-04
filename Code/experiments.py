@@ -16,7 +16,6 @@ from abc import ABC, abstractmethod
 import copy
 
 
-# TODO faire un map_to comme matplotlib legend pour maps widget to translcation model parameter (for ex. dict {widget: Class.attribute} ou pas, réfléchis moins de 1min)
 class Experiment(ABC):
     """Base class for experiments.
 
@@ -28,12 +27,12 @@ class Experiment(ABC):
 
     To create a new experiment, inherit from this class and implement the
     following methods:
-    - _construct_free_parameters: construct free parameters widgets
-    - _construct_constrained_parameters: construct constrained parameters widgets
-    - _construct_gui: construct GUI
-    - _run: run experiment
+    - construct_free_parameters: construct free parameters widgets
+    - construct_constrained_parameters: construct constrained parameters widgets
+    - construct_gui: construct GUI
+    - run: Update models with gui parameters, run simulation and display plots
 
-    The _run method should update the models free parameters from the free
+    The run method should update the models free parameters from the free
     parameters widgets, and update the constrained parameters widgets from the
     model. It should also update the plots.
 
@@ -41,17 +40,29 @@ class Experiment(ABC):
     defining the attributes needed for the experiment (typically the 
     translocation models). The parameters are not defined in the constructor
     but they are automatically constructed by the super class constructor via
-    the _construct_free_parameters and _construct_constrained_parameters.
+    the construct_free_parameters and construct_constrained_parameters.
 
     Free parameters are parameters that can be changed by the user, using for
     example sliders. Constrained parameters are parameters that are computed
     from free parameters, and are displayed using HTML widgets for example.
+
+    Remark: Displaying matplotlib plots with ipywidgets Widget.Output is a bit 
+    buggy sometimes, and it seems that it is still in development. In order to 
+    update the plot dynamically when a parameter changes and avoid
+    having multiple similar plots of the same thing, follow the syntax 
+    explained in ´run()´ abstract method below.
+    After reading on stackoverflow and ipywidget forum, I really think this is 
+    the best syntax. Still, a plot can sometimes disappear (in this case
+    you need to re-execute the Experiment) or a plot sometimes split 
+    resulting in two mirror plots. We fail to explain this behavior.
     """
 
     def __init__(self, savefig: bool = False):
         self.savefig = savefig
         self.free_parameters = self.construct_free_parameters()
         self.constrained_parameters = self.construct_constrained_parameters()
+        # There has to be a reference to the GUI, otherwise the garbage 
+        # collector will delete it.
         self.gui = self.construct_gui()
 
         for _, widget in self.free_parameters.items():
@@ -78,12 +89,57 @@ class Experiment(ABC):
 
     @abstractmethod
     def construct_gui(self) -> Widget:
-        """Construct GUI."""
+        """Construct GUI.
+
+        Can be a Box of Box of Box ... containing other Widgets.
+        """
         pass
 
     @abstractmethod
     def run(self) -> None:
-        """Run experiment."""
+        """Update models with gui parameters, run simulation and display plots.
+
+        Take current parameters values and update models, run simulation of
+        interest with the models, and then plot the results.
+        The plot must be done on a ´with Widget. Output´ context, where 
+        the ´Widget.Output´ belongs to the constructed gui (
+        ´Experiment.construct_gui()´), and the figure must be identified with
+        a unique identifier, and first clean both the output and the figure (
+        explaining the figure id, it is the way to clear a single figure is to
+        find it using its id). It will be 
+        Syntax example:
+            # Update GUI<->Models
+            models = [self.sc2r, self.rpcl] # Previously defined in __init__
+            self.update_models_free_parameters(models, self.free_parameters)
+            self.update_gui_constrained_parameters(models,
+                                                    self.constrained_parameters)
+
+            # Here do the simulations
+            ...
+
+            # Plot the results
+            with self.gui_plot # Previously defined in construct_gui
+                self.gui_plot.clear_output(wait=True)
+                plt.close('UniqueStrID')
+                fig = plt.figure('UniqueStrID', figsize=...)
+                # These 3 lines hide extra features on the plot
+                fig.canvas.header_visible = False
+                fig.canvas.footer_visible = False
+                fig.canvas.toolbar_visible = False
+                # Create axes with this syntax:
+                ax1 = fig.add_subplot()
+                ax2 = fig.add_subplot()
+                ...
+
+                ax1.plot(...)
+                ...
+
+                # Save the figure
+                if self.savefig:
+                    plt.savefig('images/[FIGNAME].pdf')
+                # Add this at the end, it has to be AFTER plt.savefig
+                plt.show()
+        """
         pass
 
     def update_models_free_parameters(
@@ -112,9 +168,6 @@ class Experiment(ABC):
                 if name in dir(model):
                     widget.value = str(round(getattr(model, name), 2))
                     break
-
-# TODO understand why at the end of a trajectory, the last step is not visible
-# and do the same for potential experiment
 
 
 class SC2RVsRPCL(Experiment):
@@ -150,9 +203,9 @@ class SC2RVsRPCL(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_↑cont.:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_↓ext.:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_↑ext.:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -160,8 +213,8 @@ class SC2RVsRPCL(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
-            'k_down_contract': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_↓ext.:"),
+            'k_down_contract': HTML(description="k_↓cont.:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -233,7 +286,7 @@ class SC2RVsRPCL(Experiment):
         models = [self.sc2r, self.rpcl]
         self.update_models_free_parameters(models, self.free_parameters)
         self.update_gui_constrained_parameters(models,
-                                                self.constrained_parameters)
+                                               self.constrained_parameters)
 
         # Normalize average velocity
         for model in models:
@@ -355,7 +408,7 @@ class SC2RVsRPCL(Experiment):
                 },
                 loc='upper left',
             )
-            #ax_hist.set_xlim(-5, 45)
+            # ax_hist.set_xlim(-5, 45)
             ax_hist.set_xlabel('Time [a.u.]')
             ax_hist.set_ylabel('Density')
             ax_hist.legend(title="Sojourn time")
@@ -398,7 +451,7 @@ class SC2RVsRPCL(Experiment):
                 facecolor='#00448880', edgecolor='#004488',
                 transform=handlebox.get_transform())
             rpcl_text = mpl.text.Text(x=x0 + 1.5*width + 5*fontsize, y=0,
-                                             text='RPCL')
+                                      text='RPCL')
 
             # Width of full legend handled by this parameter, ugly but it works
             handlebox.width *= 7.8
@@ -537,8 +590,6 @@ class VelocityVsATPADPRatio(Experiment):
 
     def construct_free_parameters(self) -> dict[str, Widget]:
         return {
-            # Source for ATP/ADP ratio:
-            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'ratio_magnitude_range': IntRangeSlider(
                 value=[1, 6], min=-2, max=6, continuous_update=False,
                 description="O(([ATP]/[ADP])/([ATP]/[ADP])|eq.):"),
@@ -553,9 +604,9 @@ class VelocityVsATPADPRatio(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_↑cont.:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_↓ext.:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_↑ext.:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -563,8 +614,8 @@ class VelocityVsATPADPRatio(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
-            'k_down_contract': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_↓ext.:"),
+            'k_down_contract': HTML(description="k_↓cont.:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -626,7 +677,7 @@ class VelocityVsATPADPRatio(Experiment):
         models = [self.sc2r, self.rpcl]
         self.update_models_free_parameters(models, self.free_parameters)
         self.update_gui_constrained_parameters(models,
-                                                self.constrained_parameters)
+                                               self.constrained_parameters)
         # Update k_TD for current range of ATP/ADP ratios
         def k_TD_range(k_DT, K_d_atp, K_d_adp, atp_adp_ratio_min,
                        atp_adp_ratio_max):
@@ -704,14 +755,10 @@ class VelocityVsATPADPRatio(Experiment):
 
             if self.savefig:
                 plt.savefig('images/velocity_vs_atp_adp_ratio.pdf')
-            plt.show()  # TODO Indicate that THIS IS IMPORTANT otherwise plot is
-            # not in the gui, but below and is not updated but instead a new
-            # plot is displayed everytime a value changes
+            plt.show()
 
 
 class VelocityVsPotential(Experiment):
-    # https://fr.wikipedia.org/wiki/%C3%89quation_d%27Eyring
-    # https://fr.wikipedia.org/wiki/Loi_d%27Arrhenius
     def __init__(self, savefig: bool = False):
         self.sc2r = SC2R()
         self.rpcl = RPCL()
@@ -727,8 +774,6 @@ class VelocityVsPotential(Experiment):
             'unit_potential': FloatRangeSlider(
                 value=[-1, 1], min=-3, max=3, continuous_update=False,
                 description="u/T:"),
-            # Source for ATP/ADP ratio:
-            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'atp_adp_ratio': _DefaultFloatLogSlider(
                 value=100, min=-1, max=4, readout_format='.1e',
                 description="[ATP]/[ADP]:"),
@@ -743,9 +788,9 @@ class VelocityVsPotential(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_↑cont.:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_↓ext.:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_↑ext.:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -753,8 +798,8 @@ class VelocityVsPotential(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
-            'k_down_contract': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_↓ext.:"),
+            'k_down_contract': HTML(description="k_↓cont.:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -819,7 +864,7 @@ class VelocityVsPotential(Experiment):
         # Update models<->GUI
         self.update_models_free_parameters(models, self.free_parameters)
         self.update_gui_constrained_parameters(models,
-                                                self.constrained_parameters)
+                                               self.constrained_parameters)
 
         # Add potentials in range
         models_copy = [self.sc2r_copy, self.rpcl_copy]
@@ -877,10 +922,10 @@ class VelocityVsPotential(Experiment):
 
             step_size = (self.rpcl.n_protomers - 1) * 2
             rpcl_plot = ax.plot(unit_potentials,
-                                       velocities[self.rpcl],
-                                       label=r"RPCL ($\Delta x = " +
-                                       str(step_size) + "$ res.)",
-                                       color='#004488')
+                                velocities[self.rpcl],
+                                label=r"RPCL ($\Delta x = " +
+                                str(step_size) + "$ res.)",
+                                color='#004488')
             rpcl_saturation_minus = (
                 step_size
                 * self.rpcl.k_h_bar * self.rpcl.k_DT * self.rpcl.k_up_contract
@@ -913,7 +958,6 @@ class VelocityVsPotential(Experiment):
             plt.show()
 
 
-# TODO add checkboxes for plotting trajectories, analytical and empirical
 class DefectlessVsDefective(Experiment):
     """Defectless vs defective comparison.
 
@@ -952,9 +996,9 @@ class DefectlessVsDefective(Experiment):
             'k_h': _DefaultFloatLogSlider(description="k_h:"),
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
-            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_↑cont.:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_↓ext.:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_↑ext.:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -962,8 +1006,8 @@ class DefectlessVsDefective(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
-            'k_down_contract': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_↓ext.:"),
+            'k_down_contract': HTML(description="k_↓cont.:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -1039,7 +1083,7 @@ class DefectlessVsDefective(Experiment):
                   self.rpcl, self.defective_rpcl]
         self.update_models_free_parameters(models, self.free_parameters)
         self.update_gui_constrained_parameters(models,
-                                                self.constrained_parameters)
+                                               self.constrained_parameters)
 
         # For each model, we do a few trajectories, compute analytical stats and
         # empirical stats, and then plot everything.
@@ -1281,7 +1325,7 @@ class DefectlessVsDefective(Experiment):
             empirical_text = mpl.text.Text(x=2*width + 5*fontsize, y=0,
                                            text='(Emp.):')
 
-            text = mpl.text.Text(x=2*width + 9*fontsize, y=0, 
+            text = mpl.text.Text(x=2*width + 9*fontsize, y=0,
                                  text=r'$\langle X \rangle \pm \sigma$')
 
             handlebox.add_artist(defectless_triangle)
@@ -1369,7 +1413,6 @@ class DefectlessVsDefective(Experiment):
             handlebox.add_artist(defective_text)
 
 
-# TODO show k_out for each state
 class NonIdeal(Experiment):
     def __init__(self, savefig: bool = False):
         self.non_ideal_sc2r = NonIdealSC2R()
@@ -1394,8 +1437,6 @@ class NonIdeal(Experiment):
                          if state != 'out'],
                 value='contracted-ATP', continuous_update=False,
                 description="RPCL reference state:"),
-            # Source for ATP/ADP ratio:
-            # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6395684/#:~:text=The%20physiological%20nucleotide%20concentration%20ratio,is%20~10%E2%88%925).
             'atp_adp_ratio': _DefaultFloatLogSlider(
                 value=100, min=-1, max=4, readout_format='.1e',
                 description="[ATP]/[ADP]:"),
@@ -1410,9 +1451,9 @@ class NonIdeal(Experiment):
             'k_s': _DefaultFloatLogSlider(value=0.1, description="k_s:"),
             'k_up': _DefaultFloatLogSlider(description="k_↑:"),
             'n_protomers': _DefaultIntSlider(description="n_protomers:"),
-            'k_up_contract': _DefaultFloatLogSlider(description="k_⮫:"),
-            'k_down_extend': _DefaultFloatLogSlider(description="k_⮯:"),
-            'k_up_extend': _DefaultFloatLogSlider(description="k_⮭:"),
+            'k_up_contract': _DefaultFloatLogSlider(description="k_↑cont.:"),
+            'k_down_extend': _DefaultFloatLogSlider(description="k_↓ext.:"),
+            'k_up_extend': _DefaultFloatLogSlider(description="k_↑ext.:"),
         }
 
     def construct_constrained_parameters(self) -> dict[str, Widget]:
@@ -1420,8 +1461,8 @@ class NonIdeal(Experiment):
             'k_TD': HTML(description="k_TD:"),
             'k_down': HTML(description="k_↓:"),
             'k_h_bar': HTML(description="ꝁ_h:"),
-            'k_down_extend_bar': HTML(description="ꝁ_⮯:"),
-            'k_down_contract': HTML(description="k_⮩:"),
+            'k_down_extend_bar': HTML(description="ꝁ_↓ext.:"),
+            'k_down_contract': HTML(description="k_↓cont.:"),
         }
 
     def construct_gui(self) -> Widget:
@@ -1492,7 +1533,7 @@ class NonIdeal(Experiment):
         # Update models<->GUI
         self.update_models_free_parameters(models, self.free_parameters)
         self.update_gui_constrained_parameters(models,
-                                                self.constrained_parameters)
+                                               self.constrained_parameters)
         self.non_ideal_sc2r.reference_state = \
             self.free_parameters['sc2r_reference_state'].value
         self.non_ideal_rpcl.reference_state = \
@@ -1523,12 +1564,12 @@ class NonIdeal(Experiment):
                                 label="Non-Ideal SC/2R",
                                 color='#DDAA33')
             rpcl_plot = ax.plot(k_outs,
-                                       probabilities[self.non_ideal_rpcl],
-                                       label="Non-Ideal RPCL",
-                                       color='#004488')
+                                probabilities[self.non_ideal_rpcl],
+                                label="Non-Ideal RPCL",
+                                color='#004488')
 
             ax.set_xlabel(r"$k_{out} \; [k]$")
-            ax.set_ylabel(r"$\mathbb{P}(\text{main loop})$")#ℙ
+            ax.set_ylabel(r"$\mathbb{P}(\text{main loop})$")  # ℙ
             ax.legend()
 
             if self.savefig:
