@@ -185,8 +185,8 @@ class TranslocationModel(ABC):
             for _ in range(max_steps):
                 # Each step the system starts in the current state and then
                 # after a sojourn time given by an exponential distribution
-                # with parameter the sum of the leaving rates of the current
-                # state, it goes to the next state chosen with probability
+                # with parameter 'the sum of the leaving rates of the current
+                # state', it jumps to the next state sampled with probability
                 # proportional to the leaving rates.
                 if True:
                     out_edges = list(
@@ -225,6 +225,9 @@ class TranslocationModel(ABC):
             result = pd.DataFrame(result)
             if cumulative_sums:
                 # TODO understand why if very few steps, there is a warning
+                # Use ´warnings.filterwarnings("error", category=FutureWarning)´
+                # to catch the warning
+                # (good luck)
                 self._compute_cumulative_sums(result, cumulative_sums)
             results.append(result)
 
@@ -458,7 +461,7 @@ class TranslocationModel(ABC):
     def _compute_cumulative_sums(
         self,
         result: pd.DataFrame,
-        cumulative_sums: str | list[str],
+        cumulative_sums: str | list[str], # TODO change to "edge_attributes"
     ) -> None:
         """Compute the cumulative sum of the specified edge attributes.
 
