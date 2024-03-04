@@ -278,7 +278,6 @@ class TranslocationModel(ABC):
                     old_rate() / average_velocity)
         return kinetic_scheme
 
-    # TODO debug difference between empirical and analytical std
     def analytical_attribute_stats(
         self,
         edge_attribute: str,
@@ -607,7 +606,6 @@ class RPCL(TranslocationModel):
         return kinetic_scheme
 
 
-# TODO do a super class with the common part of all NonIdeal models
 class NonIdealSC2R(SC2R):
     """Non-ideal Sequential Clockwise/2-Residue Step translocation model.
 
