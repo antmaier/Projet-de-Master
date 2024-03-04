@@ -461,7 +461,7 @@ class TranslocationModel(ABC):
     def _compute_cumulative_sums(
         self,
         result: pd.DataFrame,
-        cumulative_sums: str | list[str], # TODO change to "edge_attributes"
+        edge_attributes: str | list[str], # TODO change to "edge_attributes"
     ) -> None:
         """Compute the cumulative sum of the specified edge attributes.
 
@@ -477,15 +477,15 @@ class TranslocationModel(ABC):
             cumulative_sums: (list of) 'edge_attribute' for which to compute the
                 cumulative sum.
         """
-        if isinstance(cumulative_sums, str):
-            cumulative_sums = [cumulative_sums]
-        for edge_attribute in cumulative_sums:
+        if isinstance(edge_attributes, str):
+            edge_attributes = [edge_attributes]
+        for edge_attribute in edge_attributes:
             result[edge_attribute] = (
                 result['edge']
                 .apply(lambda edge: edge[2].get(edge_attribute))
                 .cumsum())
         # Add a row at the beginning with time 0 and value 0 at each column
-        result.loc[-1] = [0] + [None] + [0] * len(cumulative_sums)
+        result.loc[-1] = [0] + [None] + [0] * len(edge_attributes)
         result.index += 1
         result.sort_index(inplace=True)
         # Fill None values in the cumulative sum columns with last valid value
